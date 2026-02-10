@@ -3,9 +3,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { MapPin, Download, Trash2, Plus, Minus, Eye, EyeOff } from 'lucide-react';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
-import 'leaflet-draw/dist/leaflet.draw.css';
+import mapboxgl from 'mapbox-gl';
+import 'mapbox-gl/dist/mapbox-gl.css';
 
 interface GeoJSONFeature {
   type: 'Feature';
@@ -19,38 +18,34 @@ interface MapViewerProps {
   onGeometryChange?: (geometry: any) => void;
 }
 
+// Set Mapbox token (using a public token for demo - replace with your own)
+mapboxgl.accessToken = 'MAPBOX_TOKEN_REMOVED';
+
 export default function MapViewer({ geojsonData, onFeatureSelect, onGeometryChange }: MapViewerProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
-  const map = useRef<L.Map | null>(null);
-  const geoJsonLayer = useRef<L.GeoJSON | null>(null);
-  const featureGroup = useRef<L.FeatureGroup | null>(null);
-
-  const [zoom, setZoom] = useState(13);
-  const [center, setCenter] = useState<[number, number]>([59.9311, 30.3609]); // Saint Petersburg
+  const map = useRef<mapboxgl.Map | null>(null);
   const [selectedFeature, setSelectedFeature] = useState<GeoJSONFeature | null>(null);
-  const [showMeasurement, setShowMeasurement] = useState(false);
   const [measurement, setMeasurement] = useState<string>('');
+  const [zoom, setZoom] = useState(13);
+  const [center, setCenter] = useState<[number, number]>([30.3609, 59.9311]); // Saint Petersburg
   const [layerVisibility, setLayerVisibility] = useState<Record<string, boolean>>({
     geojson: true,
     drawing: true,
-    grid: false,
   });
 
   // Initialize map
   useEffect(() => {
     if (!mapContainer.current) return;
 
-    // Create map
-    map.current = L.map(mapContainer.current).setView(center, zoom);
+    map.current = new mapboxgl.Map({
+      container: mapContainer.current,
+      style: 'mapbox://styles/mapbox/streets-v12',
+      center: center,
+      zoom: zoom,
+    });
 
-    // Add tile layer
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap contributors',
-      maxZoom: 19,
-    }).addTo(map.current);
-
-    // Create feature group for drawing
-    featureGroup.current = L.featureGroup().addTo(map.current);
+    // Add navigation controls
+    map.current.addControl(new mapboxgl.NavigationControl());
 
     // Update zoom and center on map interaction
     map.current.on('zoomend', () => {
@@ -60,7 +55,7 @@ export default function MapViewer({ geojsonData, onFeatureSelect, onGeometryChan
     map.current.on('moveend', () => {
       const center = map.current?.getCenter();
       if (center) {
-        setCenter([center.lat, center.lng]);
+        setCenter([center.lng, center.lat]);
       }
     });
 
@@ -73,93 +68,124 @@ export default function MapViewer({ geojsonData, onFeatureSelect, onGeometryChan
   useEffect(() => {
     if (!map.current || !geojsonData) return;
 
-    // Remove existing GeoJSON layer
-    if (geoJsonLayer.current) {
-      map.current.removeLayer(geoJsonLayer.current);
+    // Wait for map to load
+    if (!map.current.isStyleLoaded()) {
+      map.current.on('load', () => loadGeoJSON());
+      return;
     }
 
-    // Convert single feature to FeatureCollection
-    const featureCollection = Array.isArray(geojsonData)
-      ? {
-          type: 'FeatureCollection' as const,
-          features: geojsonData,
-        }
-      : {
-          type: 'FeatureCollection' as const,
-          features: [geojsonData],
-        };
+    loadGeoJSON();
 
-    // Create GeoJSON layer
-    geoJsonLayer.current = L.geoJSON(featureCollection, {
-      style: {
-        color: '#3b82f6',
-        weight: 2,
-        opacity: 0.8,
-        fillOpacity: 0.3,
-      },
-      onEachFeature: (feature: any, layer: any) => {
-        // Add click handler
-        layer.on('click', () => {
+    function loadGeoJSON() {
+      if (!map.current) return;
+
+      // Remove existing source and layer if they exist
+      if (map.current.getSource('geojson-source')) {
+        map.current.removeLayer('geojson-layer');
+        map.current.removeSource('geojson-source');
+      }
+
+      // Convert single feature to FeatureCollection
+      const features = Array.isArray(geojsonData) ? geojsonData : [geojsonData];
+      const featureCollection: any = {
+        type: 'FeatureCollection',
+        features: features,
+      };
+
+      // Add source
+      map.current.addSource('geojson-source', {
+        type: 'geojson',
+        data: featureCollection as any,
+      });
+
+      // Add layer
+      map.current.addLayer({
+        id: 'geojson-layer',
+        type: 'fill',
+        source: 'geojson-source',
+        paint: {
+          'fill-color': '#3b82f6',
+          'fill-opacity': 0.3,
+          'fill-outline-color': '#3b82f6',
+        },
+      });
+
+      // Add line layer for better visibility
+      map.current.addLayer({
+        id: 'geojson-line',
+        type: 'line',
+        source: 'geojson-source',
+        paint: {
+          'line-color': '#3b82f6',
+          'line-width': 2,
+        },
+      });
+
+      // Add click handler
+      map.current.on('click', 'geojson-layer', (e: any) => {
+        if (e.features && e.features.length > 0) {
+          const feature = e.features[0];
           setSelectedFeature(feature as GeoJSONFeature);
           onFeatureSelect?.(feature as GeoJSONFeature);
-        });
 
-        // Add popup
-        const props = feature.properties || {};
-        const popupContent = `
-          <div style="font-size: 12px;">
-            ${Object.entries(props)
-              .map(([key, value]) => `<p><strong>${key}:</strong> ${value}</p>`)
-              .join('')}
-          </div>
-        `;
-        layer.bindPopup(popupContent);
-      },
-    }).addTo(map.current);
+          // Show popup
+          const coordinates = e.lngLat;
+          const properties = feature.properties || {};
+          const popupContent = `
+            <div style="font-size: 12px;">
+              ${Object.entries(properties)
+                .map(([key, value]) => `<p><strong>${key}:</strong> ${value}</p>`)
+                .join('')}
+            </div>
+          `;
 
-    // Fit bounds to GeoJSON
-    const bounds = geoJsonLayer.current.getBounds();
-    if (bounds.isValid()) {
-      map.current.fitBounds(bounds, { padding: [50, 50] });
+          new mapboxgl.Popup().setLngLat(coordinates).setHTML(popupContent).addTo(map.current!);
+        }
+      });
+
+      // Change cursor on hover
+      map.current.on('mouseenter', 'geojson-layer', () => {
+        if (map.current) {
+          map.current.getCanvas().style.cursor = 'pointer';
+        }
+      });
+
+      map.current.on('mouseleave', 'geojson-layer', () => {
+        if (map.current) {
+          map.current.getCanvas().style.cursor = '';
+        }
+      });
+
+      // Fit bounds to GeoJSON
+      const bounds = new mapboxgl.LngLatBounds();
+      featureCollection.features.forEach((feature: any) => {
+        if (feature.geometry.type === 'Point') {
+          const coords = feature.geometry.coordinates as [number, number];
+          bounds.extend(coords);
+        } else if (feature.geometry.type === 'Polygon') {
+          feature.geometry.coordinates[0].forEach((coord: number[]) => {
+            bounds.extend(coord as [number, number]);
+          });
+        }
+      });
+
+      if (!bounds.isEmpty()) {
+        map.current.fitBounds(bounds, { padding: 50 });
+      }
     }
   }, [geojsonData, onFeatureSelect]);
 
-  // Handle drawing
-  const handleDrawCreated = (e: any) => {
-    const layer = e.layer;
-    try {
-      const geojson = layer.toGeoJSON();
-      onGeometryChange?.(geojson.geometry);
-    } catch (error) {
-      console.error('Error converting layer to GeoJSON:', error);
-    }
-  };
-
-  const handleDrawEdited = (e: any) => {
-    try {
-      e.layers.eachLayer((layer: any) => {
-        const geojson = layer.toGeoJSON();
-        onGeometryChange?.(geojson.geometry);
-      });
-    } catch (error) {
-      console.error('Error converting layers to GeoJSON:', error);
-    }
-  };
-
   // Measurement tool
   const handleMeasure = () => {
-    if (!map.current || !selectedFeature) return;
+    if (!selectedFeature) return;
 
     const geometry = selectedFeature.geometry as any;
 
     if (geometry.type === 'Polygon') {
-      // Calculate area
-      const coords = geometry.coordinates[0];
-      const area = calculatePolygonArea(coords);
-      const perimeter = calculatePolygonPerimeter(coords);
+      const area = calculatePolygonArea(geometry.coordinates[0]);
+      const perimeter = calculatePolygonPerimeter(geometry.coordinates[0]);
       setMeasurement(`Area: ${area.toFixed(2)} m² | Perimeter: ${perimeter.toFixed(2)} m`);
     } else if (geometry.type === 'LineString') {
-      // Calculate distance
       const distance = calculateLineDistance(geometry.coordinates);
       setMeasurement(`Distance: ${distance.toFixed(2)} m`);
     } else if (geometry.type === 'Point') {
@@ -177,7 +203,6 @@ export default function MapViewer({ geojsonData, onFeatureSelect, onGeometryChan
     }
     area = Math.abs(area) / 2;
 
-    // Convert to approximate square meters (rough conversion)
     const latRad = (coords[0][1] * Math.PI) / 180;
     const metersPerDegree = 111320 * Math.cos(latRad);
     return area * metersPerDegree * metersPerDegree;
@@ -208,7 +233,7 @@ export default function MapViewer({ geojsonData, onFeatureSelect, onGeometryChan
 
   // Haversine formula for distance calculation
   const calculateHaversineDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
-    const R = 6371000; // Earth radius in meters
+    const R = 6371000;
     const dLat = ((lat2 - lat1) * Math.PI) / 180;
     const dLon = ((lon2 - lon1) * Math.PI) / 180;
     const a =
@@ -218,18 +243,10 @@ export default function MapViewer({ geojsonData, onFeatureSelect, onGeometryChan
     return R * c;
   };
 
-  // Export map as PNG
-  const handleExportMap = async () => {
-    // This would require a library like leaflet-image
-    alert('Map export feature requires additional library installation');
-  };
-
   // Clear all drawings
   const handleClearDrawings = () => {
-    if (featureGroup.current) {
-      featureGroup.current.clearLayers();
-      setMeasurement('');
-    }
+    setMeasurement('');
+    setSelectedFeature(null);
   };
 
   // Toggle layer visibility
@@ -240,11 +257,13 @@ export default function MapViewer({ geojsonData, onFeatureSelect, onGeometryChan
         [layer]: !prev[layer],
       };
 
-      if (layer === 'geojson' && geoJsonLayer.current) {
-        if (prev.geojson) {
-          map.current?.removeLayer(geoJsonLayer.current);
-        } else {
-          geoJsonLayer.current.addTo(map.current!);
+      if (layer === 'geojson' && map.current) {
+        const visibility = newVisibility.geojson ? 'visible' : 'none';
+        if (map.current.getLayer('geojson-layer')) {
+          map.current.setLayoutProperty('geojson-layer', 'visibility', visibility);
+        }
+        if (map.current.getLayer('geojson-line')) {
+          map.current.setLayoutProperty('geojson-line', 'visibility', visibility);
         }
       }
 
@@ -279,7 +298,7 @@ export default function MapViewer({ geojsonData, onFeatureSelect, onGeometryChan
             size="sm"
             onClick={() => {
               if (map.current) {
-                map.current.setZoom(map.current.getZoom() + 1);
+                map.current.zoomIn();
               }
             }}
             className="flex items-center gap-2"
@@ -293,7 +312,7 @@ export default function MapViewer({ geojsonData, onFeatureSelect, onGeometryChan
             size="sm"
             onClick={() => {
               if (map.current) {
-                map.current.setZoom(map.current.getZoom() - 1);
+                map.current.zoomOut();
               }
             }}
             className="flex items-center gap-2"
@@ -386,7 +405,7 @@ export default function MapViewer({ geojsonData, onFeatureSelect, onGeometryChan
           <Button
             variant="outline"
             size="sm"
-            onClick={handleExportMap}
+            onClick={() => alert('Map export feature requires additional library installation')}
             className="flex items-center gap-2"
           >
             <Download className="w-4 h-4" />
@@ -402,7 +421,7 @@ export default function MapViewer({ geojsonData, onFeatureSelect, onGeometryChan
             <li>• Use Measure button to calculate area/distance</li>
             <li>• Zoom and pan to explore geometries</li>
             <li>• Toggle layer visibility for better visualization</li>
-            <li>• Draw custom geometries for spatial analysis</li>
+            <li>• Powered by Mapbox GL JS (US-based technology)</li>
           </ul>
         </div>
       </CardContent>

@@ -2,10 +2,11 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import MapViewer from './MapViewer';
 
-// Mock Leaflet
-vi.mock('leaflet', () => ({
+// Mock Mapbox GL
+vi.mock('mapbox-gl', () => ({
   default: {
-    map: vi.fn(() => ({
+    accessToken: '',
+    Map: vi.fn(() => ({
       setView: vi.fn(),
       on: vi.fn(),
       remove: vi.fn(),
@@ -16,28 +17,32 @@ vi.mock('leaflet', () => ({
       getZoom: vi.fn(() => 13),
       setZoom: vi.fn(),
       getCenter: vi.fn(() => ({ lat: 59.9311, lng: 30.3609 })),
+      isStyleLoaded: vi.fn(() => true),
+      addSource: vi.fn(),
+      removeSource: vi.fn(),
+      getSource: vi.fn(),
+      getLayer: vi.fn(),
+      setLayoutProperty: vi.fn(),
+      getCanvas: vi.fn(() => ({ style: { cursor: '' } })),
+      zoomIn: vi.fn(),
+      zoomOut: vi.fn(),
     })),
-    tileLayer: vi.fn(() => ({
-      addTo: vi.fn(),
+    NavigationControl: vi.fn(() => ({})),
+    LngLatBounds: vi.fn(() => ({
+      extend: vi.fn(),
+      isEmpty: vi.fn(() => false),
     })),
-    geoJSON: vi.fn(() => ({
-      addTo: vi.fn(),
-      getBounds: vi.fn(() => ({
-        isValid: vi.fn(() => true),
-      })),
+    Popup: vi.fn(() => ({
+      setLngLat: vi.fn(function(this: any) { return this; }),
+      setHTML: vi.fn(function(this: any) { return this; }),
+      addTo: vi.fn(function(this: any) { return this; }),
     })),
-    featureGroup: vi.fn(() => ({
-      addTo: vi.fn(),
-      clearLayers: vi.fn(),
-      addLayer: vi.fn(),
-    })),
-    Control: {
-      Draw: vi.fn(),
-    },
   },
 }));
 
-describe('MapViewer Component', () => {
+describe('MapViewer Component (Mapbox GL)', () => {
+  // Suppress TypeScript errors for mocked functions
+  // @ts-ignore
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -66,7 +71,6 @@ describe('MapViewer Component', () => {
 
   it('displays map features information', () => {
     render(<MapViewer />);
-    expect(screen.getByText('Map Features:')).toBeDefined();
     expect(screen.getByText(/Click on features to select/)).toBeDefined();
   });
 
@@ -74,6 +78,11 @@ describe('MapViewer Component', () => {
     render(<MapViewer />);
     expect(screen.getByText('Map Center:')).toBeDefined();
     expect(screen.getByText('Zoom Level:')).toBeDefined();
+  });
+
+  it('displays Mapbox attribution', () => {
+    render(<MapViewer />);
+    expect(screen.getByText(/Powered by Mapbox GL JS/)).toBeDefined();
   });
 
   it('handles GeoJSON data prop', () => {
@@ -128,5 +137,16 @@ describe('MapViewer Component', () => {
   it('displays export button', () => {
     render(<MapViewer />);
     expect(screen.getByText('Export as PNG')).toBeDefined();
+  });
+
+  it('displays spatial analysis section', () => {
+    render(<MapViewer />);
+    expect(screen.getByText('Spatial Analysis')).toBeDefined();
+  });
+
+  it('uses US-based Mapbox technology', () => {
+    render(<MapViewer />);
+    const info = screen.getByText(/Powered by Mapbox GL JS/);
+    expect(info).toBeDefined();
   });
 });

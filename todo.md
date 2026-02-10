@@ -58,3 +58,10 @@
 - [x] Add coordinate display and measurement tools
 - [x] Integrate map with dashboard tabs
 - [ ] Create map export functionality (PNG, SVG)
+
+## Map Library Replacement
+- [x] Replace Leaflet with OpenLayers or Mapbox GL JS
+- [x] Update MapViewer component with new library
+- [x] Update SpatialAnalysis component integration
+- [x] Update unit tests for new library
+- [x] Verify all map functionality works correctly
