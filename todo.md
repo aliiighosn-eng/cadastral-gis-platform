@@ -48,3 +48,13 @@
 - [ ] Environment configuration
 - [ ] Final testing and validation
 - [ ] Deployment to production
+
+## Interactive Map Visualization
+- [x] Install Leaflet and mapping libraries
+- [x] Create MapViewer component for geometry display
+- [x] Implement GeoJSON layer rendering
+- [x] Add map controls (zoom, pan, layer toggle)
+- [x] Create spatial analysis overlay (buffers, intersections)
+- [x] Add coordinate display and measurement tools
+- [x] Integrate map with dashboard tabs
+- [ ] Create map export functionality (PNG, SVG)

@@ -9,6 +9,7 @@ import GISMerger from '@/components/gis/GISMerger';
 import PricingFactors from '@/components/gis/PricingFactors';
 import RegressionModel from '@/components/gis/RegressionModel';
 import GeometryRenderer from '@/components/gis/GeometryRenderer';
+import MapTab from '@/components/gis/MapTab';
 
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState('overview');
@@ -75,14 +76,23 @@ export default function Dashboard() {
 
         {/* Main Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-6 mb-6">
+          <TabsList className="grid w-full grid-cols-7 mb-6">
             <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="map" className="flex items-center gap-2">
+              <Map className="w-4 h-4" />
+              Map
+            </TabsTrigger>
             <TabsTrigger value="export">Export</TabsTrigger>
             <TabsTrigger value="assessment">Assessment</TabsTrigger>
             <TabsTrigger value="merger">Merger</TabsTrigger>
             <TabsTrigger value="pricing">Pricing</TabsTrigger>
             <TabsTrigger value="regression">Regression</TabsTrigger>
           </TabsList>
+
+          {/* Map Tab */}
+          <TabsContent value="map" className="space-y-6">
+            <MapTab />
+          </TabsContent>
 
           {/* Overview Tab */}
           <TabsContent value="overview" className="space-y-6">
