@@ -2,47 +2,50 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import MapViewer from './MapViewer';
 
-// Mock Mapbox GL
-vi.mock('mapbox-gl', () => ({
+// Mock Yandex Maps
+vi.mock('yandex-maps', () => ({
   default: {
-    accessToken: '',
+    ready: vi.fn((callback) => callback()),
     Map: vi.fn(() => ({
       setView: vi.fn(),
       on: vi.fn(),
       remove: vi.fn(),
-      addControl: vi.fn(),
-      addLayer: vi.fn(),
-      removeLayer: vi.fn(),
-      fitBounds: vi.fn(),
+      events: {
+        add: vi.fn(),
+      },
+      geoObjects: {
+        add: vi.fn(),
+        removeAll: vi.fn(),
+        remove: vi.fn(),
+        each: vi.fn(),
+        getLength: vi.fn(() => 1),
+        getBounds: vi.fn(() => [[59.9311, 30.3609], [59.9311, 30.3609]]),
+      },
       getZoom: vi.fn(() => 13),
       setZoom: vi.fn(),
-      getCenter: vi.fn(() => ({ lat: 59.9311, lng: 30.3609 })),
-      isStyleLoaded: vi.fn(() => true),
-      addSource: vi.fn(),
-      removeSource: vi.fn(),
-      getSource: vi.fn(),
-      getLayer: vi.fn(),
-      setLayoutProperty: vi.fn(),
-      getCanvas: vi.fn(() => ({ style: { cursor: '' } })),
-      zoomIn: vi.fn(),
-      zoomOut: vi.fn(),
+      getCenter: vi.fn(() => [30.3609, 59.9311]),
+      setBounds: vi.fn(),
+      destroy: vi.fn(),
     })),
-    NavigationControl: vi.fn(() => ({})),
-    LngLatBounds: vi.fn(() => ({
-      extend: vi.fn(),
-      isEmpty: vi.fn(() => false),
+    Placemark: vi.fn(() => ({
+      events: {
+        add: vi.fn(),
+      },
     })),
-    Popup: vi.fn(() => ({
-      setLngLat: vi.fn(function(this: any) { return this; }),
-      setHTML: vi.fn(function(this: any) { return this; }),
-      addTo: vi.fn(function(this: any) { return this; }),
+    Polygon: vi.fn(() => ({
+      events: {
+        add: vi.fn(),
+      },
+    })),
+    Polyline: vi.fn(() => ({
+      events: {
+        add: vi.fn(),
+      },
     })),
   },
 }));
 
-describe('MapViewer Component (Mapbox GL)', () => {
-  // Suppress TypeScript errors for mocked functions
-  // @ts-ignore
+describe('MapViewer Component (Yandex Maps)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -80,9 +83,9 @@ describe('MapViewer Component (Mapbox GL)', () => {
     expect(screen.getByText('Zoom Level:')).toBeDefined();
   });
 
-  it('displays Mapbox attribution', () => {
+  it('displays Yandex Maps attribution', () => {
     render(<MapViewer />);
-    expect(screen.getByText(/Powered by Mapbox GL JS/)).toBeDefined();
+    expect(screen.getByText(/Powered by Yandex Maps/)).toBeDefined();
   });
 
   it('handles GeoJSON data prop', () => {
@@ -144,9 +147,14 @@ describe('MapViewer Component (Mapbox GL)', () => {
     expect(screen.getByText('Spatial Analysis')).toBeDefined();
   });
 
-  it('uses US-based Mapbox technology', () => {
+  it('uses Russian Yandex Maps technology', () => {
     render(<MapViewer />);
-    const info = screen.getByText(/Powered by Mapbox GL JS/);
+    const info = screen.getByText(/Powered by Yandex Maps/);
     expect(info).toBeDefined();
+  });
+
+  it('displays API key notice', () => {
+    render(<MapViewer />);
+    expect(screen.getByText(/Yandex Maps API key/)).toBeDefined();
   });
 });

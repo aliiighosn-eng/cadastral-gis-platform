@@ -3,8 +3,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { MapPin, Download, Trash2, Plus, Minus, Eye, EyeOff } from 'lucide-react';
-import mapboxgl from 'mapbox-gl';
-import 'mapbox-gl/dist/mapbox-gl.css';
 
 interface GeoJSONFeature {
   type: 'Feature';
@@ -18,12 +16,15 @@ interface MapViewerProps {
   onGeometryChange?: (geometry: any) => void;
 }
 
-// Set Mapbox token (using a public token for demo - replace with your own)
-mapboxgl.accessToken = 'MAPBOX_TOKEN_REMOVED';
+declare global {
+  interface Window {
+    ymaps: any;
+  }
+}
 
 export default function MapViewer({ geojsonData, onFeatureSelect, onGeometryChange }: MapViewerProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
-  const map = useRef<mapboxgl.Map | null>(null);
+  const mapRef = useRef<any>(null);
   const [selectedFeature, setSelectedFeature] = useState<GeoJSONFeature | null>(null);
   const [measurement, setMeasurement] = useState<string>('');
   const [zoom, setZoom] = useState(13);
@@ -32,148 +33,121 @@ export default function MapViewer({ geojsonData, onFeatureSelect, onGeometryChan
     geojson: true,
     drawing: true,
   });
+  const [mapReady, setMapReady] = useState(false);
 
-  // Initialize map
+  // Initialize Yandex Map
   useEffect(() => {
-    if (!mapContainer.current) return;
+    if (!mapContainer.current || mapReady) return;
 
-    map.current = new mapboxgl.Map({
-      container: mapContainer.current,
-      style: 'mapbox://styles/mapbox/streets-v12',
-      center: center,
-      zoom: zoom,
-    });
+    // Load Yandex Maps API
+    const script = document.createElement('script');
+    script.src = 'https://api-maps.yandex.ru/2.1/?apikey=YOUR_YANDEX_MAPS_API_KEY&lang=en_US';
+    script.async = true;
+    script.onload = () => {
+      window.ymaps.ready(initMap);
+    };
+    document.head.appendChild(script);
 
-    // Add navigation controls
-    map.current.addControl(new mapboxgl.NavigationControl());
+    function initMap() {
+      if (!mapContainer.current || !window.ymaps) return;
 
-    // Update zoom and center on map interaction
-    map.current.on('zoomend', () => {
-      setZoom(map.current?.getZoom() || 13);
-    });
+      const map = new window.ymaps.Map(mapContainer.current, {
+        center: center,
+        zoom: zoom,
+        controls: ['zoomControl', 'fullscreenControl'],
+      });
 
-    map.current.on('moveend', () => {
-      const center = map.current?.getCenter();
-      if (center) {
-        setCenter([center.lng, center.lat]);
-      }
-    });
+      mapRef.current = map;
+      setMapReady(true);
+
+      // Update zoom and center on map interaction
+      map.events.add('boundschange', () => {
+        setZoom(map.getZoom());
+        const mapCenter = map.getCenter();
+        setCenter([mapCenter[1], mapCenter[0]]);
+      });
+    }
 
     return () => {
-      map.current?.remove();
+      if (mapRef.current) {
+        mapRef.current.destroy();
+      }
     };
   }, []);
 
   // Load GeoJSON data
   useEffect(() => {
-    if (!map.current || !geojsonData) return;
+    if (!mapReady || !mapRef.current || !geojsonData) return;
 
-    // Wait for map to load
-    if (!map.current.isStyleLoaded()) {
-      map.current.on('load', () => loadGeoJSON());
-      return;
-    }
+    const map = mapRef.current;
 
-    loadGeoJSON();
+    // Convert GeoJSON to Yandex format
+    const features = Array.isArray(geojsonData) ? geojsonData : [geojsonData];
 
-    function loadGeoJSON() {
-      if (!map.current) return;
+    features.forEach((feature: GeoJSONFeature, index: number) => {
+      const geometry = feature.geometry as any;
 
-      // Remove existing source and layer if they exist
-      if (map.current.getSource('geojson-source')) {
-        map.current.removeLayer('geojson-layer');
-        map.current.removeSource('geojson-source');
+      if (geometry.type === 'Point') {
+        const placemark = new window.ymaps.Placemark(
+          [geometry.coordinates[1], geometry.coordinates[0]],
+          {
+            balloonContent: formatBalloonContent(feature.properties),
+          },
+          {
+            preset: 'islands#blueDotIcon',
+          }
+        );
+
+        placemark.events.add('click', () => {
+          setSelectedFeature(feature);
+          onFeatureSelect?.(feature);
+        });
+
+        map.geoObjects.add(placemark);
+      } else if (geometry.type === 'Polygon') {
+        const coords = geometry.coordinates[0].map((coord: number[]) => [coord[1], coord[0]]);
+
+        const polygon = new window.ymaps.Polygon([coords], {
+          balloonContent: formatBalloonContent(feature.properties),
+        });
+
+        polygon.events.add('click', () => {
+          setSelectedFeature(feature);
+          onFeatureSelect?.(feature);
+        });
+
+        map.geoObjects.add(polygon);
+      } else if (geometry.type === 'LineString') {
+        const coords = geometry.coordinates.map((coord: number[]) => [coord[1], coord[0]]);
+
+        const polyline = new window.ymaps.Polyline(coords, {
+          balloonContent: formatBalloonContent(feature.properties),
+        });
+
+        polyline.events.add('click', () => {
+          setSelectedFeature(feature);
+          onFeatureSelect?.(feature);
+        });
+
+        map.geoObjects.add(polyline);
       }
+    });
 
-      // Convert single feature to FeatureCollection
-      const features = Array.isArray(geojsonData) ? geojsonData : [geojsonData];
-      const featureCollection: any = {
-        type: 'FeatureCollection',
-        features: features,
-      };
-
-      // Add source
-      map.current.addSource('geojson-source', {
-        type: 'geojson',
-        data: featureCollection as any,
+    // Fit bounds to all features
+    if (map.geoObjects.getLength() > 0) {
+      map.setBounds(map.geoObjects.getBounds(), {
+        checkZoomRange: true,
+        zoomMargin: 50,
       });
-
-      // Add layer
-      map.current.addLayer({
-        id: 'geojson-layer',
-        type: 'fill',
-        source: 'geojson-source',
-        paint: {
-          'fill-color': '#3b82f6',
-          'fill-opacity': 0.3,
-          'fill-outline-color': '#3b82f6',
-        },
-      });
-
-      // Add line layer for better visibility
-      map.current.addLayer({
-        id: 'geojson-line',
-        type: 'line',
-        source: 'geojson-source',
-        paint: {
-          'line-color': '#3b82f6',
-          'line-width': 2,
-        },
-      });
-
-      // Add click handler
-      map.current.on('click', 'geojson-layer', (e: any) => {
-        if (e.features && e.features.length > 0) {
-          const feature = e.features[0];
-          setSelectedFeature(feature as GeoJSONFeature);
-          onFeatureSelect?.(feature as GeoJSONFeature);
-
-          // Show popup
-          const coordinates = e.lngLat;
-          const properties = feature.properties || {};
-          const popupContent = `
-            <div style="font-size: 12px;">
-              ${Object.entries(properties)
-                .map(([key, value]) => `<p><strong>${key}:</strong> ${value}</p>`)
-                .join('')}
-            </div>
-          `;
-
-          new mapboxgl.Popup().setLngLat(coordinates).setHTML(popupContent).addTo(map.current!);
-        }
-      });
-
-      // Change cursor on hover
-      map.current.on('mouseenter', 'geojson-layer', () => {
-        if (map.current) {
-          map.current.getCanvas().style.cursor = 'pointer';
-        }
-      });
-
-      map.current.on('mouseleave', 'geojson-layer', () => {
-        if (map.current) {
-          map.current.getCanvas().style.cursor = '';
-        }
-      });
-
-      // Fit bounds to GeoJSON
-      const bounds = new mapboxgl.LngLatBounds();
-      featureCollection.features.forEach((feature: any) => {
-        if (feature.geometry.type === 'Point') {
-          const coords = feature.geometry.coordinates as [number, number];
-          bounds.extend(coords);
-        } else if (feature.geometry.type === 'Polygon') {
-          feature.geometry.coordinates[0].forEach((coord: number[]) => {
-            bounds.extend(coord as [number, number]);
-          });
-        }
-      });
-
-      if (!bounds.isEmpty()) {
-        map.current.fitBounds(bounds, { padding: 50 });
-      }
     }
-  }, [geojsonData, onFeatureSelect]);
+  }, [geojsonData, mapReady, onFeatureSelect]);
+
+  // Format balloon content for Yandex popups
+  const formatBalloonContent = (properties: Record<string, any>): string => {
+    return Object.entries(properties)
+      .map(([key, value]) => `<p><strong>${key}:</strong> ${value}</p>`)
+      .join('');
+  };
 
   // Measurement tool
   const handleMeasure = () => {
@@ -247,6 +221,9 @@ export default function MapViewer({ geojsonData, onFeatureSelect, onGeometryChan
   const handleClearDrawings = () => {
     setMeasurement('');
     setSelectedFeature(null);
+    if (mapRef.current) {
+      mapRef.current.geoObjects.removeAll();
+    }
   };
 
   // Toggle layer visibility
@@ -257,13 +234,15 @@ export default function MapViewer({ geojsonData, onFeatureSelect, onGeometryChan
         [layer]: !prev[layer],
       };
 
-      if (layer === 'geojson' && map.current) {
-        const visibility = newVisibility.geojson ? 'visible' : 'none';
-        if (map.current.getLayer('geojson-layer')) {
-          map.current.setLayoutProperty('geojson-layer', 'visibility', visibility);
-        }
-        if (map.current.getLayer('geojson-line')) {
-          map.current.setLayoutProperty('geojson-line', 'visibility', visibility);
+      if (layer === 'geojson' && mapRef.current) {
+        if (newVisibility.geojson) {
+          mapRef.current.geoObjects.each((geoObject: any) => {
+            geoObject.options.set('visible', true);
+          });
+        } else {
+          mapRef.current.geoObjects.each((geoObject: any) => {
+            geoObject.options.set('visible', false);
+          });
         }
       }
 
@@ -279,7 +258,7 @@ export default function MapViewer({ geojsonData, onFeatureSelect, onGeometryChan
           Interactive Map Viewer
         </CardTitle>
         <CardDescription>
-          Visualize geometries, measure distances, and perform spatial analysis
+          Visualize geometries, measure distances, and perform spatial analysis with Yandex Maps
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -289,6 +268,11 @@ export default function MapViewer({ geojsonData, onFeatureSelect, onGeometryChan
             ref={mapContainer}
             className="w-full h-96 rounded-lg border border-slate-200 bg-slate-50"
           />
+          {!mapReady && (
+            <div className="text-center text-slate-600 py-4">
+              <p>Loading Yandex Maps...</p>
+            </div>
+          )}
         </div>
 
         {/* Map Controls */}
@@ -297,8 +281,8 @@ export default function MapViewer({ geojsonData, onFeatureSelect, onGeometryChan
             variant="outline"
             size="sm"
             onClick={() => {
-              if (map.current) {
-                map.current.zoomIn();
+              if (mapRef.current) {
+                mapRef.current.setZoom(mapRef.current.getZoom() + 1);
               }
             }}
             className="flex items-center gap-2"
@@ -311,8 +295,8 @@ export default function MapViewer({ geojsonData, onFeatureSelect, onGeometryChan
             variant="outline"
             size="sm"
             onClick={() => {
-              if (map.current) {
-                map.current.zoomOut();
+              if (mapRef.current) {
+                mapRef.current.setZoom(mapRef.current.getZoom() - 1);
               }
             }}
             className="flex items-center gap-2"
@@ -421,8 +405,16 @@ export default function MapViewer({ geojsonData, onFeatureSelect, onGeometryChan
             <li>• Use Measure button to calculate area/distance</li>
             <li>• Zoom and pan to explore geometries</li>
             <li>• Toggle layer visibility for better visualization</li>
-            <li>• Powered by Mapbox GL JS (US-based technology)</li>
+            <li>• Powered by Yandex Maps (Russian mapping service)</li>
           </ul>
+        </div>
+
+        {/* API Key Notice */}
+        <div className="bg-amber-50 p-4 rounded-lg border border-amber-200">
+          <p className="text-sm text-amber-900">
+            <strong>⚠️ Note:</strong> To use Yandex Maps, you need to add your Yandex Maps API key. 
+            Get one from <a href="https://developer.tech.yandex.com/services/api/maps" target="_blank" rel="noopener noreferrer" className="underline">Yandex Developer Console</a> and update the API key in the component.
+          </p>
         </div>
       </CardContent>
     </Card>

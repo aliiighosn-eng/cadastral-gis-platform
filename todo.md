@@ -65,3 +65,9 @@
 - [x] Update SpatialAnalysis component integration
 - [x] Update unit tests for new library
 - [x] Verify all map functionality works correctly
+
+## Bug Fixes
+- [x] Fix Mapbox access token error - replace with Yandex Maps
+- [x] Implement Yandex Maps integration
+- [x] Update MapViewer component with Yandex API
+- [x] Test Yandex map functionality
