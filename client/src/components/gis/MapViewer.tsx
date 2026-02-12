@@ -33,12 +33,12 @@ export default function MapViewer({ geojsonData, onFeatureSelect }: MapViewerPro
   const getStyleUrl = () => {
     switch (mapStyle) {
       case 'satellite':
-        return 'https://tiles.stadiamaps.com/styles/stamen_terrain.json';
+        return 'https://basemaps.cartocdn.com/gl/positron-nolabels-gl-style/style.json';
       case 'terrain':
-        return 'https://tiles.stadiamaps.com/styles/stamen_toner_background.json';
+        return 'https://basemaps.cartocdn.com/gl/voyager-nolabels-gl-style/style.json';
       case 'osm':
       default:
-        return 'https://tiles.openstreetmap.se/data/style.json';
+        return 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json';
     }
   };
 
