@@ -122,10 +122,10 @@
 - [x] Add service descriptions and documentation
 
 
-## Map Library Migration to OpenMapTiles
+## Map Library Migration to Native OpenMapTiles
 - [x] Remove Yandex Maps library
-- [x] Install Leaflet and OpenMapTiles dependencies
-- [x] Rewrite MapViewer component with OpenMapTiles
+- [x] Remove Leaflet and install MapLibre GL JS
+- [x] Rewrite MapViewer component with native OpenMapTiles
 - [x] Configure OpenMapTiles API key/endpoint
 - [x] Update map styles and layers
 - [x] Test map functionality
