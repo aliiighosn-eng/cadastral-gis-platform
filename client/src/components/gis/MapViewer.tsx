@@ -1,11 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
-import maplibregl from 'maplibre-gl';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { MapPin, Trash2, Eye, EyeOff } from 'lucide-react';
-import 'maplibre-gl/dist/maplibre-gl.css';
 
 interface GeoJSONFeature {
   type: 'Feature';
@@ -18,162 +16,109 @@ interface MapViewerProps {
   onFeatureSelect?: (feature: GeoJSONFeature) => void;
 }
 
+declare global {
+  interface Window {
+    ymaps: any;
+  }
+}
+
 export default function MapViewer({ geojsonData, onFeatureSelect }: MapViewerProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
-  const map = useRef<maplibregl.Map | null>(null);
+  const map = useRef<any>(null);
   const [selectedFeature, setSelectedFeature] = useState<GeoJSONFeature | null>(null);
   const [measurement, setMeasurement] = useState<string>('');
   const [coordinates, setCoordinates] = useState('');
-  const [mapStyle, setMapStyle] = useState<'osm' | 'satellite' | 'terrain'>('osm');
+  const [mapType, setMapType] = useState<'map' | 'satellite' | 'hybrid'>('map');
   const [layerVisibility, setLayerVisibility] = useState<Record<string, boolean>>({
     geojson: true,
   });
 
-  // Get OpenMapTiles style URL based on selected style
-  const getStyleUrl = () => {
-    switch (mapStyle) {
-      case 'satellite':
-        return 'https://demotiles.maplibre.org/style.json';
-      case 'terrain':
-        return 'https://demotiles.maplibre.org/style.json';
-      case 'osm':
-      default:
-        return 'https://demotiles.maplibre.org/style.json';
-    }
-  };
-
-  // Initialize map
+  // Initialize Yandex Map
   useEffect(() => {
     if (!mapContainer.current) return;
 
-    map.current = new maplibregl.Map({
-      container: mapContainer.current,
-      style: 'https://demotiles.maplibre.org/style.json',
-      center: [30.3609, 59.9311], // Saint Petersburg
-      zoom: 12,
-    });
-
-    // Add navigation controls
-    map.current.addControl(new maplibregl.NavigationControl(), 'top-right');
-
-    // Handle map click for coordinates
-    map.current.on('click', (e) => {
-      const { lng, lat } = e.lngLat;
-      setCoordinates(`${lat.toFixed(6)}, ${lng.toFixed(6)}`);
-    });
-
-    // Add GeoJSON source
-    if (geojsonData) {
-      const features = Array.isArray(geojsonData) ? geojsonData : [geojsonData];
-      map.current.on('load', () => {
-        if (!map.current) return;
-
-        map.current.addSource('geojson-source', {
-          type: 'geojson',
-          data: {
-            type: 'FeatureCollection',
-            features: features,
-          },
-        });
-
-        // Add layers for different geometry types
-        map.current.addLayer({
-          id: 'geojson-points',
-          type: 'circle',
-          source: 'geojson-source',
-          filter: ['==', '$type', 'Point'],
-          paint: {
-            'circle-radius': 6,
-            'circle-color': '#3b82f6',
-            'circle-stroke-width': 2,
-            'circle-stroke-color': '#1e40af',
-          },
-        });
-
-        map.current.addLayer({
-          id: 'geojson-lines',
-          type: 'line',
-          source: 'geojson-source',
-          filter: ['==', '$type', 'LineString'],
-          paint: {
-            'line-color': '#3b82f6',
-            'line-width': 2,
-          },
-        });
-
-        map.current.addLayer({
-          id: 'geojson-polygons',
-          type: 'fill',
-          source: 'geojson-source',
-          filter: ['==', '$type', 'Polygon'],
-          paint: {
-            'fill-color': '#10b981',
-            'fill-opacity': 0.5,
-          },
-        });
-
-        map.current.addLayer({
-          id: 'geojson-polygons-outline',
-          type: 'line',
-          source: 'geojson-source',
-          filter: ['==', '$type', 'Polygon'],
-          paint: {
-            'line-color': '#059669',
-            'line-width': 2,
-          },
-        });
-
-        // Add click handlers for features
-        ['geojson-points', 'geojson-lines', 'geojson-polygons'].forEach((layerId) => {
-          map.current?.on('click', layerId, (e) => {
-            if (e.features && e.features[0]) {
-              const feature = e.features[0];
-              const geoJsonFeature: GeoJSONFeature = {
-                type: 'Feature',
-                properties: feature.properties || {},
-                geometry: feature.geometry,
-              };
-              setSelectedFeature(geoJsonFeature);
-              onFeatureSelect?.(geoJsonFeature);
-
-              // Show popup
-              new maplibregl.Popup()
-                .setLngLat(e.lngLat)
-                .setHTML(
-                  `<div class="text-sm"><strong>${feature.properties?.name || 'Feature'}</strong></div>`
-                )
-                .addTo(map.current!);
-            }
+    // Load Yandex Maps API
+    const script = document.createElement('script');
+    script.src = 'https://api-maps.yandex.ru/2.1/?apikey=YOUR_API_KEY&lang=en_US';
+    script.async = true;
+    script.onload = () => {
+      if (window.ymaps) {
+        window.ymaps.ready(() => {
+          map.current = new window.ymaps.Map(mapContainer.current, {
+            center: [59.9311, 30.3609], // Saint Petersburg [lat, lng]
+            zoom: 12,
+            type: mapType,
           });
+
+          // Handle map click for coordinates
+          map.current.events.add('click', (e: any) => {
+            const coords = e.get('coords');
+            setCoordinates(`${coords[0].toFixed(6)}, ${coords[1].toFixed(6)}`);
+          });
+
+          // Add GeoJSON features to map
+          if (geojsonData) {
+            const features = Array.isArray(geojsonData) ? geojsonData : [geojsonData];
+            features.forEach((feature) => {
+              addFeatureToMap(feature);
+            });
+          }
         });
+      }
+    };
+    document.head.appendChild(script);
+
+    return () => {
+      if (script.parentNode) {
+        script.parentNode.removeChild(script);
+      }
+    };
+  }, [geojsonData]);
+
+  // Change map type
+  useEffect(() => {
+    if (map.current) {
+      map.current.setType(`yandex#${mapType}`);
+    }
+  }, [mapType]);
+
+  const addFeatureToMap = (feature: GeoJSONFeature) => {
+    if (!map.current || !window.ymaps) return;
+
+    const geometry = feature.geometry;
+    let placemark: any = null;
+
+    if (geometry.type === 'Point') {
+      const [lng, lat] = geometry.coordinates;
+      placemark = new window.ymaps.Placemark(
+        [lat, lng],
+        {
+          balloonContent: `<strong>${feature.properties?.name || 'Point'}</strong>`,
+        },
+        {
+          preset: 'islands#blueDotIcon',
+        }
+      );
+    } else if (geometry.type === 'LineString') {
+      const coordinates = geometry.coordinates.map((coord: any) => [coord[1], coord[0]]);
+      placemark = new window.ymaps.Polyline(coordinates, {
+        balloonContent: `<strong>${feature.properties?.name || 'Line'}</strong>`,
+      });
+    } else if (geometry.type === 'Polygon') {
+      const coordinates = geometry.coordinates[0].map((coord: any) => [coord[1], coord[0]]);
+      placemark = new window.ymaps.Polygon([coordinates], {
+        balloonContent: `<strong>${feature.properties?.name || 'Polygon'}</strong>`,
       });
     }
 
-    return () => {
-      // Cleanup is handled by MapLibre
-    };
-  }, [geojsonData, onFeatureSelect]);
-
-  // Update map style
-  useEffect(() => {
-    if (!map.current) return;
-    map.current.setStyle(getStyleUrl());
-  }, [mapStyle]);
-
-  // Toggle layer visibility
-  useEffect(() => {
-    if (!map.current) return;
-    const visibility = layerVisibility.geojson ? 'visible' : 'none';
-    ['geojson-points', 'geojson-lines', 'geojson-polygons', 'geojson-polygons-outline'].forEach(
-      (layerId) => {
-        try {
-          map.current?.setLayoutProperty(layerId, 'visibility', visibility);
-        } catch (e) {
-          // Layer might not exist yet
-        }
-      }
-    );
-  }, [layerVisibility]);
+    if (placemark) {
+      placemark.events.add('click', () => {
+        setSelectedFeature(feature);
+        onFeatureSelect?.(feature);
+      });
+      map.current.geoObjects.add(placemark);
+    }
+  };
 
   const calculateHaversineDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
     const R = 6371000;
@@ -232,6 +177,9 @@ export default function MapViewer({ geojsonData, onFeatureSelect }: MapViewerPro
     setMeasurement('');
     setSelectedFeature(null);
     setCoordinates('');
+    if (map.current) {
+      map.current.geoObjects.removeAll();
+    }
   };
 
   const toggleLayerVisibility = (layer: string) => {
@@ -249,21 +197,21 @@ export default function MapViewer({ geojsonData, onFeatureSelect }: MapViewerPro
           Interactive Map Viewer
         </CardTitle>
         <CardDescription>
-          Visualize geometries with MapLibre GL JS and free tile providers
+          Visualize geometries with Yandex Maps
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid grid-cols-3 gap-4">
           <div className="space-y-2">
-            <label className="text-sm font-medium">Map Style</label>
-            <Select value={mapStyle} onValueChange={(v: any) => setMapStyle(v)}>
+            <label className="text-sm font-medium">Map Type</label>
+            <Select value={mapType} onValueChange={(v: any) => setMapType(v)}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="osm">OpenStreetMap</SelectItem>
+                <SelectItem value="map">Standard</SelectItem>
                 <SelectItem value="satellite">Satellite</SelectItem>
-                <SelectItem value="terrain">Terrain</SelectItem>
+                <SelectItem value="hybrid">Hybrid</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -351,7 +299,8 @@ export default function MapViewer({ geojsonData, onFeatureSelect }: MapViewerPro
           <p>• Click on map to get coordinates</p>
           <p>• Click on features to view properties</p>
           <p>• Use Measure button for area/distance</p>
-          <p>• Powered by OpenMapTiles and MapLibre GL JS</p>
+          <p>• Powered by Yandex Maps</p>
+          <p className="text-yellow-600 font-medium">• Note: Add your Yandex Maps API key to enable the map</p>
         </div>
       </CardContent>
     </Card>

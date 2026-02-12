@@ -130,3 +130,10 @@
 - [x] Update map styles and layers
 - [x] Test map functionality
 - [x] Update unit tests
+
+## Map Library Migration Back to Yandex
+- [x] Remove MapLibre GL JS and install Yandex Maps library
+- [x] Rewrite MapViewer component with Yandex Maps API
+- [x] Configure Yandex Maps styles and layers
+- [x] Test map functionality
+- [x] Update unit tests
