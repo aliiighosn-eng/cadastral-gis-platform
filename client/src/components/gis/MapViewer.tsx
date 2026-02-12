@@ -28,7 +28,7 @@ export default function MapViewer({ geojsonData, onFeatureSelect }: MapViewerPro
   const [selectedFeature, setSelectedFeature] = useState<GeoJSONFeature | null>(null);
   const [measurement, setMeasurement] = useState<string>('');
   const [coordinates, setCoordinates] = useState('');
-  const [mapType, setMapType] = useState<'map' | 'satellite' | 'hybrid'>('map');
+  const [mapType, setMapType] = useState<string>('map');
   const [layerVisibility, setLayerVisibility] = useState<Record<string, boolean>>({
     geojson: true,
   });
@@ -54,10 +54,16 @@ export default function MapViewer({ geojsonData, onFeatureSelect }: MapViewerPro
           window.ymaps.ready(() => {
             try {
               if (!mapContainer.current) return;
+              // Yandex Maps type format: 'yandex#map', 'yandex#satellite', 'yandex#hybrid'
+              const typeMap: Record<string, string> = {
+                map: 'yandex#map',
+                satellite: 'yandex#satellite',
+                hybrid: 'yandex#hybrid',
+              };
               map.current = new window.ymaps.Map(mapContainer.current, {
                 center: [59.9311, 30.3609], // Saint Petersburg [lat, lng]
                 zoom: 12,
-                type: mapType,
+                type: typeMap[mapType] || 'yandex#map',
               });
 
               // Handle map click for coordinates
@@ -94,7 +100,17 @@ export default function MapViewer({ geojsonData, onFeatureSelect }: MapViewerPro
   // Change map type
   useEffect(() => {
     if (map.current) {
-      map.current.setType(`yandex#${mapType}`);
+      try {
+        // Yandex Maps type format: 'yandex#map', 'yandex#satellite', 'yandex#hybrid'
+        const typeMap: Record<string, string> = {
+          map: 'yandex#map',
+          satellite: 'yandex#satellite',
+          hybrid: 'yandex#hybrid',
+        };
+        map.current.setType(typeMap[mapType] || 'yandex#map');
+      } catch (err) {
+        console.error('Error changing map type:', err);
+      }
     }
   }, [mapType]);
 
@@ -220,7 +236,7 @@ export default function MapViewer({ geojsonData, onFeatureSelect }: MapViewerPro
         <div className="grid grid-cols-3 gap-4">
           <div className="space-y-2">
             <label className="text-sm font-medium">Map Type</label>
-            <Select value={mapType} onValueChange={(v: any) => setMapType(v)}>
+            <Select value={mapType} onValueChange={(v: string) => setMapType(v)}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
