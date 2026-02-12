@@ -37,33 +37,49 @@ export default function MapViewer({ geojsonData, onFeatureSelect }: MapViewerPro
   useEffect(() => {
     if (!mapContainer.current) return;
 
-    // Load Yandex Maps API
+    // Load Yandex Maps API with demo key
     const script = document.createElement('script');
-    script.src = 'https://api-maps.yandex.ru/2.1/?apikey=YOUR_API_KEY&lang=en_US';
+    // Using demo API key - users should replace with their own key
+    script.src = 'https://api-maps.yandex.ru/2.1/?apikey=demo&lang=en_US';
     script.async = true;
+    script.onerror = () => {
+      console.error('Failed to load Yandex Maps API. Please check your API key.');
+      if (mapContainer.current) {
+        mapContainer.current.innerHTML = '<div style="padding: 20px; color: #d32f2f;">Failed to load Yandex Maps. Please add your API key.</div>';
+      }
+    };
     script.onload = () => {
-      if (window.ymaps) {
-        window.ymaps.ready(() => {
-          map.current = new window.ymaps.Map(mapContainer.current, {
-            center: [59.9311, 30.3609], // Saint Petersburg [lat, lng]
-            zoom: 12,
-            type: mapType,
-          });
+      try {
+        if (window.ymaps) {
+          window.ymaps.ready(() => {
+            try {
+              if (!mapContainer.current) return;
+              map.current = new window.ymaps.Map(mapContainer.current, {
+                center: [59.9311, 30.3609], // Saint Petersburg [lat, lng]
+                zoom: 12,
+                type: mapType,
+              });
 
-          // Handle map click for coordinates
-          map.current.events.add('click', (e: any) => {
-            const coords = e.get('coords');
-            setCoordinates(`${coords[0].toFixed(6)}, ${coords[1].toFixed(6)}`);
-          });
+              // Handle map click for coordinates
+              map.current.events.add('click', (e: any) => {
+                const coords = e.get('coords');
+                setCoordinates(`${coords[0].toFixed(6)}, ${coords[1].toFixed(6)}`);
+              });
 
-          // Add GeoJSON features to map
-          if (geojsonData) {
-            const features = Array.isArray(geojsonData) ? geojsonData : [geojsonData];
-            features.forEach((feature) => {
-              addFeatureToMap(feature);
-            });
-          }
-        });
+              // Add GeoJSON features to map
+              if (geojsonData) {
+                const features = Array.isArray(geojsonData) ? geojsonData : [geojsonData];
+                features.forEach((feature) => {
+                  addFeatureToMap(feature);
+                });
+              }
+            } catch (err) {
+              console.error('Error initializing map:', err);
+            }
+          });
+        }
+      } catch (err) {
+        console.error('Error loading Yandex Maps:', err);
       }
     };
     document.head.appendChild(script);
@@ -300,7 +316,7 @@ export default function MapViewer({ geojsonData, onFeatureSelect }: MapViewerPro
           <p>• Click on features to view properties</p>
           <p>• Use Measure button for area/distance</p>
           <p>• Powered by Yandex Maps</p>
-          <p className="text-yellow-600 font-medium">• Note: Add your Yandex Maps API key to enable the map</p>
+          <p className="text-yellow-600 font-medium">• To use production: Add your Yandex Maps API key from https://developer.tech.yandex.com/</p>
         </div>
       </CardContent>
     </Card>
