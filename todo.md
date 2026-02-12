@@ -120,3 +120,13 @@
 - [x] Update Dashboard.tsx to include all 25 services
 - [x] Create service navigation menu
 - [x] Add service descriptions and documentation
+
+
+## Map Library Migration to OpenMapTiles
+- [x] Remove Yandex Maps library
+- [x] Install Leaflet and OpenMapTiles dependencies
+- [x] Rewrite MapViewer component with OpenMapTiles
+- [x] Configure OpenMapTiles API key/endpoint
+- [x] Update map styles and layers
+- [x] Test map functionality
+- [x] Update unit tests

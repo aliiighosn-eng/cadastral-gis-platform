@@ -1,8 +1,20 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { MapContainer, TileLayer, useMap } from 'react-leaflet';
+import L from 'leaflet';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { MapPin, Download, Trash2, Plus, Minus, Eye, EyeOff } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { MapPin, Trash2, Eye, EyeOff } from 'lucide-react';
+import 'leaflet/dist/leaflet.css';
+
+// Fix Leaflet default icon
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+});
 
 interface GeoJSONFeature {
   type: 'Feature';
@@ -13,161 +25,59 @@ interface GeoJSONFeature {
 interface MapViewerProps {
   geojsonData?: GeoJSONFeature | GeoJSONFeature[];
   onFeatureSelect?: (feature: GeoJSONFeature) => void;
-  onGeometryChange?: (geometry: any) => void;
 }
 
-declare global {
-  interface Window {
-    ymaps: any;
-  }
+function MapController({ onCoordinatesChange }: { onCoordinatesChange: (coords: string) => void }) {
+  const map = useMap();
+
+  useEffect(() => {
+    const handleClick = (e: L.LeafletMouseEvent) => {
+      const { lat, lng } = e.latlng;
+      onCoordinatesChange(`${lat.toFixed(6)}, ${lng.toFixed(6)}`);
+    };
+
+    map.on('click', handleClick);
+    return () => {
+      map.off('click', handleClick);
+    };
+  }, [map, onCoordinatesChange]);
+
+  return null;
 }
 
-export default function MapViewer({ geojsonData, onFeatureSelect, onGeometryChange }: MapViewerProps) {
-  const mapContainer = useRef<HTMLDivElement>(null);
+export default function MapViewer({ geojsonData, onFeatureSelect }: MapViewerProps) {
   const mapRef = useRef<any>(null);
   const [selectedFeature, setSelectedFeature] = useState<GeoJSONFeature | null>(null);
   const [measurement, setMeasurement] = useState<string>('');
-  const [zoom, setZoom] = useState(13);
-  const [center, setCenter] = useState<[number, number]>([30.3609, 59.9311]); // Saint Petersburg
+  const [coordinates, setCoordinates] = useState('');
+  const [mapStyle, setMapStyle] = useState<'osm' | 'satellite' | 'terrain'>('osm');
   const [layerVisibility, setLayerVisibility] = useState<Record<string, boolean>>({
     geojson: true,
-    drawing: true,
   });
-  const [mapReady, setMapReady] = useState(false);
 
-  // Initialize Yandex Map
-  useEffect(() => {
-    if (!mapContainer.current || mapReady) return;
-
-    // Load Yandex Maps API
-    const script = document.createElement('script');
-    script.src = 'https://api-maps.yandex.ru/2.1/?apikey=YOUR_YANDEX_MAPS_API_KEY&lang=en_US';
-    script.async = true;
-    script.onload = () => {
-      window.ymaps.ready(initMap);
-    };
-    document.head.appendChild(script);
-
-    function initMap() {
-      if (!mapContainer.current || !window.ymaps) return;
-
-      const map = new window.ymaps.Map(mapContainer.current, {
-        center: center,
-        zoom: zoom,
-        controls: ['zoomControl', 'fullscreenControl'],
-      });
-
-      mapRef.current = map;
-      setMapReady(true);
-
-      // Update zoom and center on map interaction
-      map.events.add('boundschange', () => {
-        setZoom(map.getZoom());
-        const mapCenter = map.getCenter();
-        setCenter([mapCenter[1], mapCenter[0]]);
-      });
-    }
-
-    return () => {
-      if (mapRef.current) {
-        mapRef.current.destroy();
-      }
-    };
-  }, []);
-
-  // Load GeoJSON data
-  useEffect(() => {
-    if (!mapReady || !mapRef.current || !geojsonData) return;
-
-    const map = mapRef.current;
-
-    // Convert GeoJSON to Yandex format
-    const features = Array.isArray(geojsonData) ? geojsonData : [geojsonData];
-
-    features.forEach((feature: GeoJSONFeature, index: number) => {
-      const geometry = feature.geometry as any;
-
-      if (geometry.type === 'Point') {
-        const placemark = new window.ymaps.Placemark(
-          [geometry.coordinates[1], geometry.coordinates[0]],
-          {
-            balloonContent: formatBalloonContent(feature.properties),
-          },
-          {
-            preset: 'islands#blueDotIcon',
-          }
-        );
-
-        placemark.events.add('click', () => {
-          setSelectedFeature(feature);
-          onFeatureSelect?.(feature);
-        });
-
-        map.geoObjects.add(placemark);
-      } else if (geometry.type === 'Polygon') {
-        const coords = geometry.coordinates[0].map((coord: number[]) => [coord[1], coord[0]]);
-
-        const polygon = new window.ymaps.Polygon([coords], {
-          balloonContent: formatBalloonContent(feature.properties),
-        });
-
-        polygon.events.add('click', () => {
-          setSelectedFeature(feature);
-          onFeatureSelect?.(feature);
-        });
-
-        map.geoObjects.add(polygon);
-      } else if (geometry.type === 'LineString') {
-        const coords = geometry.coordinates.map((coord: number[]) => [coord[1], coord[0]]);
-
-        const polyline = new window.ymaps.Polyline(coords, {
-          balloonContent: formatBalloonContent(feature.properties),
-        });
-
-        polyline.events.add('click', () => {
-          setSelectedFeature(feature);
-          onFeatureSelect?.(feature);
-        });
-
-        map.geoObjects.add(polyline);
-      }
-    });
-
-    // Fit bounds to all features
-    if (map.geoObjects.getLength() > 0) {
-      map.setBounds(map.geoObjects.getBounds(), {
-        checkZoomRange: true,
-        zoomMargin: 50,
-      });
-    }
-  }, [geojsonData, mapReady, onFeatureSelect]);
-
-  // Format balloon content for Yandex popups
-  const formatBalloonContent = (properties: Record<string, any>): string => {
-    return Object.entries(properties)
-      .map(([key, value]) => `<p><strong>${key}:</strong> ${value}</p>`)
-      .join('');
-  };
-
-  // Measurement tool
-  const handleMeasure = () => {
-    if (!selectedFeature) return;
-
-    const geometry = selectedFeature.geometry as any;
-
-    if (geometry.type === 'Polygon') {
-      const area = calculatePolygonArea(geometry.coordinates[0]);
-      const perimeter = calculatePolygonPerimeter(geometry.coordinates[0]);
-      setMeasurement(`Area: ${area.toFixed(2)} m² | Perimeter: ${perimeter.toFixed(2)} m`);
-    } else if (geometry.type === 'LineString') {
-      const distance = calculateLineDistance(geometry.coordinates);
-      setMeasurement(`Distance: ${distance.toFixed(2)} m`);
-    } else if (geometry.type === 'Point') {
-      setMeasurement(`Point: [${geometry.coordinates[1]}, ${geometry.coordinates[0]}]`);
+  const getTileLayerUrl = () => {
+    switch (mapStyle) {
+      case 'satellite':
+        return 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+      case 'terrain':
+        return 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}';
+      case 'osm':
+      default:
+        return 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
     }
   };
 
-  // Calculate polygon area using Shoelace formula
+  const getTileLayerAttribution = () => {
+    switch (mapStyle) {
+      case 'satellite':
+      case 'terrain':
+        return '&copy; Esri, DigitalGlobe, Earthstar Geographics';
+      case 'osm':
+      default:
+        return '&copy; OpenStreetMap contributors';
+    }
+  };
+
   const calculatePolygonArea = (coords: any[]): number => {
     let area = 0;
     for (let i = 0; i < coords.length - 1; i++) {
@@ -176,36 +86,11 @@ export default function MapViewer({ geojsonData, onFeatureSelect, onGeometryChan
       area += (lon2 - lon1) * (lat2 + lat1);
     }
     area = Math.abs(area) / 2;
-
     const latRad = (coords[0][1] * Math.PI) / 180;
     const metersPerDegree = 111320 * Math.cos(latRad);
     return area * metersPerDegree * metersPerDegree;
   };
 
-  // Calculate polygon perimeter
-  const calculatePolygonPerimeter = (coords: any[]): number => {
-    let perimeter = 0;
-    for (let i = 0; i < coords.length - 1; i++) {
-      const [lon1, lat1] = coords[i];
-      const [lon2, lat2] = coords[i + 1];
-      const distance = calculateHaversineDistance(lat1, lon1, lat2, lon2);
-      perimeter += distance;
-    }
-    return perimeter;
-  };
-
-  // Calculate line distance
-  const calculateLineDistance = (coords: any[]): number => {
-    let distance = 0;
-    for (let i = 0; i < coords.length - 1; i++) {
-      const [lon1, lat1] = coords[i];
-      const [lon2, lat2] = coords[i + 1];
-      distance += calculateHaversineDistance(lat1, lon1, lat2, lon2);
-    }
-    return distance;
-  };
-
-  // Haversine formula for distance calculation
   const calculateHaversineDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
     const R = 6371000;
     const dLat = ((lat2 - lat1) * Math.PI) / 180;
@@ -217,38 +102,117 @@ export default function MapViewer({ geojsonData, onFeatureSelect, onGeometryChan
     return R * c;
   };
 
-  // Clear all drawings
-  const handleClearDrawings = () => {
-    setMeasurement('');
-    setSelectedFeature(null);
-    if (mapRef.current) {
-      mapRef.current.geoObjects.removeAll();
+  const handleMeasure = () => {
+    if (!selectedFeature) return;
+
+    const geometry = selectedFeature.geometry as any;
+
+    if (geometry.type === 'Polygon') {
+      const area = calculatePolygonArea(geometry.coordinates[0]);
+      let perimeter = 0;
+      const coords = geometry.coordinates[0];
+      for (let i = 0; i < coords.length - 1; i++) {
+        const [lon1, lat1] = coords[i];
+        const [lon2, lat2] = coords[i + 1];
+        perimeter += calculateHaversineDistance(lat1, lon1, lat2, lon2);
+      }
+      setMeasurement(`Area: ${area.toFixed(2)} m² | Perimeter: ${perimeter.toFixed(2)} m`);
+    } else if (geometry.type === 'LineString') {
+      let distance = 0;
+      const coords = geometry.coordinates;
+      for (let i = 0; i < coords.length - 1; i++) {
+        const [lon1, lat1] = coords[i];
+        const [lon2, lat2] = coords[i + 1];
+        distance += calculateHaversineDistance(lat1, lon1, lat2, lon2);
+      }
+      setMeasurement(`Distance: ${distance.toFixed(2)} m`);
+    } else if (geometry.type === 'Point') {
+      setMeasurement(`Point: [${geometry.coordinates[1]}, ${geometry.coordinates[0]}]`);
     }
   };
 
-  // Toggle layer visibility
-  const toggleLayerVisibility = (layer: string) => {
-    setLayerVisibility(prev => {
-      const newVisibility = {
-        ...prev,
-        [layer]: !prev[layer],
-      };
+  const handleClearDrawings = () => {
+    setMeasurement('');
+    setSelectedFeature(null);
+    setCoordinates('');
+  };
 
-      if (layer === 'geojson' && mapRef.current) {
-        if (newVisibility.geojson) {
-          mapRef.current.geoObjects.each((geoObject: any) => {
-            geoObject.options.set('visible', true);
-          });
-        } else {
-          mapRef.current.geoObjects.each((geoObject: any) => {
-            geoObject.options.set('visible', false);
+  const toggleLayerVisibility = (layer: string) => {
+    setLayerVisibility(prev => ({
+      ...prev,
+      [layer]: !prev[layer],
+    }));
+  };
+
+  // Add GeoJSON features to map
+  useEffect(() => {
+    if (!mapRef.current || !geojsonData || !layerVisibility.geojson) return;
+
+    const map = mapRef.current;
+    const features = Array.isArray(geojsonData) ? geojsonData : [geojsonData];
+
+    features.forEach((feature: GeoJSONFeature) => {
+      const geometry = feature.geometry as any;
+
+      if (geometry.type === 'Point') {
+        const marker = L.marker([geometry.coordinates[1], geometry.coordinates[0]]);
+        let popupContent = '<div class="text-sm">';
+        if (feature.properties) {
+          Object.entries(feature.properties).forEach(([key, value]) => {
+            popupContent += `<p><strong>${key}:</strong> ${value}</p>`;
           });
         }
+        popupContent += '</div>';
+        marker.bindPopup(popupContent);
+        marker.on('click', () => {
+          setSelectedFeature(feature);
+          onFeatureSelect?.(feature);
+        });
+        marker.addTo(map);
+      } else if (geometry.type === 'Polygon') {
+        const coords = geometry.coordinates[0].map((c: number[]) => [c[1], c[0]]);
+        const polygon = L.polygon(coords, {
+          fillColor: '#10b981',
+          weight: 2,
+          opacity: 1,
+          color: '#059669',
+          fillOpacity: 0.5,
+        });
+        let popupContent = '<div class="text-sm">';
+        if (feature.properties) {
+          Object.entries(feature.properties).forEach(([key, value]) => {
+            popupContent += `<p><strong>${key}:</strong> ${value}</p>`;
+          });
+        }
+        popupContent += '</div>';
+        polygon.bindPopup(popupContent);
+        polygon.on('click', () => {
+          setSelectedFeature(feature);
+          onFeatureSelect?.(feature);
+        });
+        polygon.addTo(map);
+      } else if (geometry.type === 'LineString') {
+        const coords = geometry.coordinates.map((c: number[]) => [c[1], c[0]]);
+        const polyline = L.polyline(coords, {
+          color: '#3b82f6',
+          weight: 2,
+        });
+        let popupContent = '<div class="text-sm">';
+        if (feature.properties) {
+          Object.entries(feature.properties).forEach(([key, value]) => {
+            popupContent += `<p><strong>${key}:</strong> ${value}</p>`;
+          });
+        }
+        popupContent += '</div>';
+        polyline.bindPopup(popupContent);
+        polyline.on('click', () => {
+          setSelectedFeature(feature);
+          onFeatureSelect?.(feature);
+        });
+        polyline.addTo(map);
       }
-
-      return newVisibility;
     });
-  };
+  }, [geojsonData, layerVisibility.geojson, onFeatureSelect]);
 
   return (
     <Card className="w-full">
@@ -258,53 +222,61 @@ export default function MapViewer({ geojsonData, onFeatureSelect, onGeometryChan
           Interactive Map Viewer
         </CardTitle>
         <CardDescription>
-          Visualize geometries, measure distances, and perform spatial analysis with Yandex Maps
+          Visualize geometries with OpenMapTiles and Leaflet
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Map Container */}
-        <div className="space-y-2">
-          <div
-            ref={mapContainer}
-            className="w-full h-96 rounded-lg border border-slate-200 bg-slate-50"
-          />
-          {!mapReady && (
-            <div className="text-center text-slate-600 py-4">
-              <p>Loading Yandex Maps...</p>
-            </div>
-          )}
+        <div className="grid grid-cols-3 gap-4">
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Map Style</label>
+            <Select value={mapStyle} onValueChange={(v: any) => setMapStyle(v)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="osm">OpenStreetMap</SelectItem>
+                <SelectItem value="satellite">Satellite</SelectItem>
+                <SelectItem value="terrain">Terrain</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Coordinates</label>
+            <Input
+              readOnly
+              value={coordinates}
+              placeholder="Click on map"
+              className="text-xs"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Actions</label>
+            <Button onClick={handleClearDrawings} size="sm" variant="outline" className="w-full">
+              <Trash2 className="h-4 w-4 mr-1" />
+              Clear
+            </Button>
+          </div>
         </div>
 
-        {/* Map Controls */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              if (mapRef.current) {
-                mapRef.current.setZoom(mapRef.current.getZoom() + 1);
-              }
-            }}
-            className="flex items-center gap-2"
+        <div className="rounded-lg border overflow-hidden" style={{ height: '500px' }}>
+          <MapContainer
+            center={[59.9311, 30.3609] as any}
+            zoom={12}
+            style={{ height: '100%', width: '100%' }}
+            ref={mapRef as any}
           >
-            <Plus className="w-4 h-4" />
-            Zoom In
-          </Button>
+            <TileLayer
+              url={getTileLayerUrl()}
+              attribution={getTileLayerAttribution() as any}
+              maxZoom={19}
+            />
+            <MapController onCoordinatesChange={setCoordinates} />
+          </MapContainer>
+        </div>
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              if (mapRef.current) {
-                mapRef.current.setZoom(mapRef.current.getZoom() - 1);
-              }
-            }}
-            className="flex items-center gap-2"
-          >
-            <Minus className="w-4 h-4" />
-            Zoom Out
-          </Button>
-
+        <div className="grid grid-cols-3 gap-2">
           <Button
             variant="outline"
             size="sm"
@@ -314,12 +286,12 @@ export default function MapViewer({ geojsonData, onFeatureSelect, onGeometryChan
             {layerVisibility.geojson ? (
               <>
                 <Eye className="w-4 h-4" />
-                Hide GeoJSON
+                Hide
               </>
             ) : (
               <>
                 <EyeOff className="w-4 h-4" />
-                Show GeoJSON
+                Show
               </>
             )}
           </Button>
@@ -327,94 +299,44 @@ export default function MapViewer({ geojsonData, onFeatureSelect, onGeometryChan
           <Button
             variant="outline"
             size="sm"
-            onClick={handleClearDrawings}
-            className="flex items-center gap-2"
+            onClick={handleMeasure}
+            disabled={!selectedFeature}
           >
+            Measure
+          </Button>
+
+          <Button variant="outline" size="sm" onClick={handleClearDrawings}>
             <Trash2 className="w-4 h-4" />
-            Clear
           </Button>
         </div>
 
-        {/* Measurement Section */}
-        <div className="bg-slate-50 p-4 rounded-lg space-y-2">
-          <div className="flex items-center justify-between">
-            <h4 className="font-medium text-slate-900">Spatial Analysis</h4>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleMeasure}
-              disabled={!selectedFeature}
-            >
-              Measure
-            </Button>
-          </div>
-
-          {selectedFeature && (
-            <div className="space-y-2">
-              <div className="text-sm text-slate-600">
-                <p className="font-medium">Selected Feature:</p>
-                <p className="text-xs">Type: {(selectedFeature.geometry as any).type}</p>
-                {selectedFeature.properties && (
-                  <div className="mt-2 space-y-1">
-                    {Object.entries(selectedFeature.properties).map(([key, value]) => (
-                      <p key={key} className="text-xs">
-                        <strong>{key}:</strong> {String(value)}
-                      </p>
-                    ))}
-                  </div>
-                )}
+        {selectedFeature && (
+          <div className="bg-slate-50 p-4 rounded-lg space-y-2">
+            <p className="font-medium text-slate-900">Selected Feature</p>
+            <p className="text-sm text-slate-600">Type: {(selectedFeature.geometry as any).type}</p>
+            {selectedFeature.properties && (
+              <div className="space-y-1">
+                {Object.entries(selectedFeature.properties).map(([key, value]) => (
+                  <p key={key} className="text-xs text-slate-600">
+                    <strong>{key}:</strong> {String(value)}
+                  </p>
+                ))}
               </div>
-            </div>
-          )}
+            )}
+          </div>
+        )}
 
-          {measurement && (
-            <div className="bg-blue-50 p-3 rounded border border-blue-200">
-              <p className="text-sm font-medium text-blue-900">{measurement}</p>
-            </div>
-          )}
-        </div>
+        {measurement && (
+          <div className="bg-blue-50 p-3 rounded border border-blue-200">
+            <p className="text-sm font-medium text-blue-900">{measurement}</p>
+          </div>
+        )}
 
-        {/* Coordinate Display */}
-        <div className="bg-slate-50 p-4 rounded-lg">
-          <p className="text-sm text-slate-600">
-            <strong>Map Center:</strong> {center[0].toFixed(4)}, {center[1].toFixed(4)}
-          </p>
-          <p className="text-sm text-slate-600">
-            <strong>Zoom Level:</strong> {zoom}
-          </p>
-        </div>
-
-        {/* Export Options */}
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => alert('Map export feature requires additional library installation')}
-            className="flex items-center gap-2"
-          >
-            <Download className="w-4 h-4" />
-            Export as PNG
-          </Button>
-        </div>
-
-        {/* Information */}
-        <div className="bg-blue-50 p-4 rounded-lg space-y-2">
-          <p className="text-sm font-medium text-blue-900">Map Features:</p>
-          <ul className="text-sm text-blue-800 space-y-1">
-            <li>• Click on features to select and view properties</li>
-            <li>• Use Measure button to calculate area/distance</li>
-            <li>• Zoom and pan to explore geometries</li>
-            <li>• Toggle layer visibility for better visualization</li>
-            <li>• Powered by Yandex Maps (Russian mapping service)</li>
-          </ul>
-        </div>
-
-        {/* API Key Notice */}
-        <div className="bg-amber-50 p-4 rounded-lg border border-amber-200">
-          <p className="text-sm text-amber-900">
-            <strong>⚠️ Note:</strong> To use Yandex Maps, you need to add your Yandex Maps API key. 
-            Get one from <a href="https://developer.tech.yandex.com/services/api/maps" target="_blank" rel="noopener noreferrer" className="underline">Yandex Developer Console</a> and update the API key in the component.
-          </p>
+        <div className="text-xs text-slate-500 space-y-1">
+          <p>• Click on map to get coordinates</p>
+          <p>• Click on features to view properties</p>
+          <p>• Use Measure button for area/distance</p>
+          <p>• Powered by OpenMapTiles and Leaflet</p>
         </div>
       </CardContent>
     </Card>

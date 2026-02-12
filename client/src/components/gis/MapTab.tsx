@@ -7,10 +7,9 @@ import { Map, Layers } from 'lucide-react';
 interface MapTabProps {
   geojsonData?: any;
   onFeatureSelect?: (feature: any) => void;
-  onGeometryChange?: (geometry: any) => void;
 }
 
-export default function MapTab({ geojsonData, onFeatureSelect, onGeometryChange }: MapTabProps) {
+export default function MapTab({ geojsonData, onFeatureSelect }: MapTabProps) {
   const [selectedFeature, setSelectedFeature] = useState<any>(null);
 
   const handleBufferCreate = (distance: number, unit: string) => {
@@ -48,7 +47,6 @@ export default function MapTab({ geojsonData, onFeatureSelect, onGeometryChange 
             setSelectedFeature(feature);
             onFeatureSelect?.(feature);
           }}
-          onGeometryChange={onGeometryChange}
         />
       </TabsContent>
 
