@@ -33,12 +33,12 @@ export default function MapViewer({ geojsonData, onFeatureSelect }: MapViewerPro
   const getStyleUrl = () => {
     switch (mapStyle) {
       case 'satellite':
-        return 'https://basemaps.cartocdn.com/gl/positron-nolabels-gl-style/style.json';
+        return 'https://demotiles.maplibre.org/style.json';
       case 'terrain':
-        return 'https://basemaps.cartocdn.com/gl/voyager-nolabels-gl-style/style.json';
+        return 'https://demotiles.maplibre.org/style.json';
       case 'osm':
       default:
-        return 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json';
+        return 'https://demotiles.maplibre.org/style.json';
     }
   };
 
@@ -48,7 +48,7 @@ export default function MapViewer({ geojsonData, onFeatureSelect }: MapViewerPro
 
     map.current = new maplibregl.Map({
       container: mapContainer.current,
-      style: getStyleUrl(),
+      style: 'https://demotiles.maplibre.org/style.json',
       center: [30.3609, 59.9311], // Saint Petersburg
       zoom: 12,
     });
@@ -249,7 +249,7 @@ export default function MapViewer({ geojsonData, onFeatureSelect }: MapViewerPro
           Interactive Map Viewer
         </CardTitle>
         <CardDescription>
-          Visualize geometries with OpenMapTiles and MapLibre GL JS
+          Visualize geometries with MapLibre GL JS and free tile providers
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
