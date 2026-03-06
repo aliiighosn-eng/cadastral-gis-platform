@@ -5,13 +5,15 @@ Handles .dxf, .geojson, and .tab file formats.
 
 import json
 import os
-from typing import List, Dict, Optional, Tuple
-import geopandas as gpd
-from shapely.geometry import shape
+from typing import Dict, List, Optional
+
 import fiona
+import geopandas as gpd
+import pandas as pd
 from openpyxl import Workbook
-from openpyxl.styles import Font, PatternFill, Alignment
-from server.gis_utils import GeometryParser, CoordinateTransformer
+from openpyxl.styles import Alignment, Font, PatternFill
+
+from server.gis_utils import CoordinateTransformer, GeometryParser
 
 
 class FileProcessor:
@@ -24,7 +26,7 @@ class FileProcessor:
         """Read GeoJSON file."""
         try:
             return gpd.read_file(file_path)
-        except Exception as e:
+        except (FileNotFoundError, ValueError, KeyError) as e:
             raise ValueError(f"Failed to read GeoJSON: {str(e)}")
 
     @staticmethod
@@ -39,13 +41,13 @@ class FileProcessor:
                 try:
                     gdf = gpd.read_file(file_path, layer=layer)
                     gdf_list.append(gdf)
-                except Exception:
+                except (FileNotFoundError, ValueError, KeyError):
                     continue
 
             if gdf_list:
                 return gpd.GeoDataFrame(pd.concat(gdf_list, ignore_index=True))
             return None
-        except Exception as e:
+        except (FileNotFoundError, ValueError, KeyError) as e:
             raise ValueError(f"Failed to read DXF: {str(e)}")
 
     @staticmethod
@@ -53,7 +55,7 @@ class FileProcessor:
         """Read TAB (MapInfo) file."""
         try:
             return gpd.read_file(file_path)
-        except Exception as e:
+        except (FileNotFoundError, ValueError, KeyError) as e:
             raise ValueError(f"Failed to read TAB: {str(e)}")
 
     @staticmethod
@@ -81,7 +83,7 @@ class FileProcessor:
             feature = {
                 "id": idx,
                 "geometry": row.geometry.__geo_interface__,
-                "properties": {k: v for k, v in row.items() if k != "geometry"}
+                "properties": {k: v for k, v in row.items() if k != "geometry"},
             }
             features.append(feature)
 
@@ -92,7 +94,7 @@ class FileProcessor:
         features: List[Dict],
         output_path: str,
         target_system: str = "EPSG:4328",
-        source_system: str = "EPSG:4326"
+        source_system: str = "EPSG:4326",
     ) -> str:
         """
         Export features to Excel with transformed coordinates.
@@ -141,17 +143,19 @@ class FileProcessor:
                     transformed_x, transformed_y = CoordinateTransformer.transform_coordinates(
                         x, y, source_system, target_system
                     )
-                except Exception:
+                except (ValueError, TypeError):
                     transformed_x, transformed_y = x, y
 
-                ws.append([
-                    feature_id,
-                    kad_num,
-                    geom_type,
-                    round(transformed_x, 6),
-                    round(transformed_y, 6),
-                    target_system
-                ])
+                ws.append(
+                    [
+                        feature_id,
+                        kad_num,
+                        geom_type,
+                        round(transformed_x, 6),
+                        round(transformed_y, 6),
+                        target_system,
+                    ]
+                )
                 row_num += 1
 
         # Adjust column widths
@@ -172,9 +176,7 @@ class GeoJSONMerger:
 
     @staticmethod
     def merge_layers(
-        file_paths: List[str],
-        output_path: str,
-        target_system: str = "EPSG:4328"
+        file_paths: List[str], output_path: str, target_system: str = "EPSG:4328"
     ) -> str:
         """
         Merge multiple GeoJSON layers into a single file.
@@ -198,7 +200,7 @@ class GeoJSONMerger:
                     feature = {
                         "type": "Feature",
                         "geometry": row.geometry.__geo_interface__,
-                        "properties": {}
+                        "properties": {},
                     }
 
                     # Add required fields, using None for missing values
@@ -211,15 +213,12 @@ class GeoJSONMerger:
                             feature["properties"][key] = value
 
                     merged_features.append(feature)
-            except Exception as e:
+            except (FileNotFoundError, ValueError, KeyError) as e:
                 print(f"Warning: Could not process {file_path}: {str(e)}")
                 continue
 
         # Create FeatureCollection
-        feature_collection = {
-            "type": "FeatureCollection",
-            "features": merged_features
-        }
+        feature_collection = {"type": "FeatureCollection", "features": merged_features}
 
         # Save to file
         with open(output_path, "w", encoding="utf-8") as f:
@@ -242,5 +241,5 @@ class GeoJSONMerger:
                     return False
 
             return True
-        except Exception:
+        except (FileNotFoundError, json.JSONDecodeError, ValueError):
             return False

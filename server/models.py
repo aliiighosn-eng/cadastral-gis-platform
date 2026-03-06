@@ -3,18 +3,29 @@ Database models for Gazprom Proekt Cadastral Service.
 Defines core entities for cadastral data, land parcels, pricing factors, and analysis results.
 """
 
+import enum
 from datetime import datetime
-from typing import Optional
-from sqlalchemy import Column, Integer, String, Float, DateTime, Text, JSON, Boolean, Enum, ForeignKey, LargeBinary
+
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    Column,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+)
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
-import enum
 
 Base = declarative_base()
 
 
 class CoordinateSystem(str, enum.Enum):
     """Supported coordinate systems for transformations."""
+
     MSK64 = "MSK-64"
     EPSG3857 = "EPSG:3857"
     EPSG4328 = "EPSG:4328"
@@ -22,6 +33,7 @@ class CoordinateSystem(str, enum.Enum):
 
 class ProcessingStatus(str, enum.Enum):
     """Status of processing tasks."""
+
     PENDING = "pending"
     PROCESSING = "processing"
     COMPLETED = "completed"
@@ -30,6 +42,7 @@ class ProcessingStatus(str, enum.Enum):
 
 class CadastralParcel(Base):
     """Represents a cadastral land parcel."""
+
     __tablename__ = "cadastral_parcels"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -51,6 +64,7 @@ class CadastralParcel(Base):
 
 class LandAssessment(Base):
     """Stores land use assessment metrics."""
+
     __tablename__ = "land_assessments"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -68,6 +82,7 @@ class LandAssessment(Base):
 
 class PricingFactor(Base):
     """Stores pricing factors for land parcels."""
+
     __tablename__ = "pricing_factors"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -83,6 +98,7 @@ class PricingFactor(Base):
 
 class CadastralValuation(Base):
     """Stores cadastral valuation results."""
+
     __tablename__ = "cadastral_valuations"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -98,6 +114,7 @@ class CadastralValuation(Base):
 
 class GISFile(Base):
     """Stores metadata for uploaded GIS files."""
+
     __tablename__ = "gis_files"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -115,6 +132,7 @@ class GISFile(Base):
 
 class ProcessingTask(Base):
     """Tracks long-running processing tasks."""
+
     __tablename__ = "processing_tasks"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -129,6 +147,7 @@ class ProcessingTask(Base):
 
 class RegressionModel(Base):
     """Stores trained regression models for cadastral valuation."""
+
     __tablename__ = "regression_models"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -144,6 +163,7 @@ class RegressionModel(Base):
 
 class MarketData(Base):
     """Stores market data from CIAN and other sources."""
+
     __tablename__ = "market_data"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -161,6 +181,7 @@ class MarketData(Base):
 
 class TelegramUser(Base):
     """Stores Telegram user information for bot interactions."""
+
     __tablename__ = "telegram_users"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -175,6 +196,7 @@ class TelegramUser(Base):
 
 class RenderedImage(Base):
     """Stores metadata for rendered GIS images."""
+
     __tablename__ = "rendered_images"
 
     id = Column(Integer, primary_key=True, index=True)

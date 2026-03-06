@@ -3,26 +3,24 @@ Telegram bot interface for cadastral data queries and file delivery.
 Handles /start_parse command and cadastral number input.
 """
 
-import os
 import json
 import logging
-from typing import Optional, Dict, List
-from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
+from datetime import datetime
+from typing import Dict, Optional
+
+from telegram import ReplyKeyboardMarkup, ReplyKeyboardRemove, Update
 from telegram.ext import (
     Application,
     CommandHandler,
-    MessageHandler,
-    ConversationHandler,
     ContextTypes,
-    filters
+    ConversationHandler,
+    MessageHandler,
+    filters,
 )
-from datetime import datetime
-import asyncio
 
 # Configure logging
 logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
 )
 logger = logging.getLogger(__name__)
 
@@ -46,7 +44,6 @@ class GazpromTelegramBot:
 
     async def start_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         """Handle /start command."""
-        user_id = update.effective_user.id
         user_name = update.effective_user.first_name
 
         welcome_message = (
@@ -66,14 +63,11 @@ class GazpromTelegramBot:
         # Store user state
         self.user_states[user_id] = {
             "state": "selecting_type",
-            "started_at": datetime.utcnow().isoformat()
+            "started_at": datetime.utcnow().isoformat(),
         }
 
         # Create keyboard with property type options
-        keyboard = [
-            ["🏠 Земельный участок", "🏢 Здание"],
-            ["📍 Помещение", "❌ Отмена"]
-        ]
+        keyboard = [["🏠 Земельный участок", "🏢 Здание"], ["📍 Помещение", "❌ Отмена"]]
 
         reply_markup = ReplyKeyboardMarkup(keyboard, one_time_keyboard=True)
 
@@ -87,23 +81,22 @@ class GazpromTelegramBot:
         await update.message.reply_text(message, reply_markup=reply_markup)
         return SELECTING_TYPE
 
-    async def handle_type_selection(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    async def handle_type_selection(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+    ) -> int:
         """Handle property type selection."""
         user_id = update.effective_user.user_id
         selected_type = update.message.text
 
         if selected_type == "❌ Отмена":
-            await update.message.reply_text(
-                "Поиск отменен.",
-                reply_markup=ReplyKeyboardRemove()
-            )
+            await update.message.reply_text("Поиск отменен.", reply_markup=ReplyKeyboardRemove())
             return ConversationHandler.END
 
         # Map selection to type
         type_map = {
             "🏠 Земельный участок": "land_plot",
             "🏢 Здание": "building",
-            "📍 Помещение": "room"
+            "📍 Помещение": "room",
         }
 
         property_type = type_map.get(selected_type, "land_plot")
@@ -121,16 +114,14 @@ class GazpromTelegramBot:
             "• 78:6:2108:6:3 - учетный номер объекта адресной системы"
         )
 
-        await update.message.reply_text(
-            message,
-            reply_markup=ReplyKeyboardRemove()
-        )
+        await update.message.reply_text(message, reply_markup=ReplyKeyboardRemove())
 
         return ENTERING_CADASTRAL
 
-    async def handle_cadastral_input(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    async def handle_cadastral_input(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+    ) -> int:
         """Handle cadastral number input."""
-        user_id = update.effective_user.id
         cadastral_number = update.message.text.strip()
 
         # Validate cadastral number format
@@ -145,8 +136,7 @@ class GazpromTelegramBot:
 
         # Show processing message
         processing_msg = await update.message.reply_text(
-            "⏳ Обработка запроса...\n"
-            "Пожалуйста, подождите."
+            "⏳ Обработка запроса...\n" "Пожалуйста, подождите."
         )
 
         try:
@@ -161,7 +151,7 @@ class GazpromTelegramBot:
                 await update.message.reply_document(
                     document=open(geojson_file, "rb"),
                     filename=f"property_{cadastral_number.replace(':', '_')}.geojson",
-                    caption=f"📄 Данные для кадастрового номера: {cadastral_number}"
+                    caption=f"📄 Данные для кадастрового номера: {cadastral_number}",
                 )
 
                 # Send property info
@@ -176,8 +166,7 @@ class GazpromTelegramBot:
         except Exception as e:
             logger.error(f"Error processing cadastral number: {str(e)}")
             await update.message.reply_text(
-                "❌ Произошла ошибка при обработке запроса.\n"
-                "Пожалуйста, попробуйте позже."
+                "❌ Произошла ошибка при обработке запроса.\n" "Пожалуйста, попробуйте позже."
             )
 
         finally:
@@ -223,8 +212,10 @@ class GazpromTelegramBot:
             "land_use": "Жилищное строительство",
             "geometry": {
                 "type": "Polygon",
-                "coordinates": [[[30.3, 59.9], [30.31, 59.9], [30.31, 59.91], [30.3, 59.91], [30.3, 59.9]]]
-            }
+                "coordinates": [
+                    [[30.3, 59.9], [30.31, 59.9], [30.31, 59.91], [30.3, 59.91], [30.3, 59.9]]
+                ],
+            },
         }
 
     async def create_geojson_file(self, property_data: Dict) -> str:
@@ -246,11 +237,11 @@ class GazpromTelegramBot:
                         "cadastral_number": property_data.get("cadastral_number"),
                         "address": property_data.get("address"),
                         "area": property_data.get("area"),
-                        "land_use": property_data.get("land_use")
+                        "land_use": property_data.get("land_use"),
                     },
-                    "geometry": property_data.get("geometry")
+                    "geometry": property_data.get("geometry"),
                 }
-            ]
+            ],
         }
 
         # Save to temporary file
@@ -276,10 +267,7 @@ class GazpromTelegramBot:
 
     async def cancel_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         """Handle /cancel command."""
-        await update.message.reply_text(
-            "Операция отменена.",
-            reply_markup=ReplyKeyboardRemove()
-        )
+        await update.message.reply_text("Операция отменена.", reply_markup=ReplyKeyboardRemove())
         return ConversationHandler.END
 
     async def help_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -306,9 +294,9 @@ class GazpromTelegramBot:
                 ],
                 ENTERING_CADASTRAL: [
                     MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_cadastral_input)
-                ]
+                ],
             },
-            fallbacks=[CommandHandler("cancel", self.cancel_command)]
+            fallbacks=[CommandHandler("cancel", self.cancel_command)],
         )
 
         # Add handlers

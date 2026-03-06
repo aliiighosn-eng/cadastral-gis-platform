@@ -3,11 +3,11 @@ Regression model for cadastral value prediction.
 Implements linear regression for land valuation with quality metrics.
 """
 
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple
+
 import numpy as np
 from sklearn.linear_model import LinearRegression
-from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_error
-import json
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
 
 class CadastralRegressionModel:
@@ -29,12 +29,7 @@ class CadastralRegressionModel:
         self.rmse = 0.0
         self.mae = 0.0
 
-    def train(
-        self,
-        X: np.ndarray,
-        y: np.ndarray,
-        feature_names: List[str]
-    ) -> Dict:
+    def train(self, X: np.ndarray, y: np.ndarray, feature_names: List[str]) -> Dict:
         """
         Train regression model.
 
@@ -55,8 +50,7 @@ class CadastralRegressionModel:
 
             # Store coefficients
             self.coefficients = {
-                name: float(coef)
-                for name, coef in zip(feature_names, self.model.coef_)
+                name: float(coef) for name, coef in zip(feature_names, self.model.coef_)
             }
             self.intercept = float(self.model.intercept_)
 
@@ -71,7 +65,7 @@ class CadastralRegressionModel:
                 "rmse": self.rmse,
                 "mae": self.mae,
                 "samples": len(X),
-                "features": len(feature_names)
+                "features": len(feature_names),
             }
         except Exception as e:
             raise ValueError(f"Model training failed: {str(e)}")
@@ -135,7 +129,7 @@ class CadastralRegressionModel:
             "r_squared": self.r_squared,
             "rmse": self.rmse,
             "mae": self.mae,
-            "formula": self.get_formula()
+            "formula": self.get_formula(),
         }
 
     def load_model_data(self, data: Dict) -> None:
@@ -193,15 +187,12 @@ class ModelValidator:
             "std_residual": float(np.std(residuals)),
             "min_residual": float(np.min(residuals)),
             "max_residual": float(np.max(residuals)),
-            "median_residual": float(np.median(residuals))
+            "median_residual": float(np.median(residuals)),
         }
 
     @staticmethod
     def cross_validate(
-        X: np.ndarray,
-        y: np.ndarray,
-        feature_names: List[str],
-        n_splits: int = 5
+        X: np.ndarray, y: np.ndarray, feature_names: List[str], n_splits: int = 5
     ) -> Dict:
         """
         Perform k-fold cross-validation.
@@ -218,12 +209,12 @@ class ModelValidator:
         from sklearn.model_selection import cross_val_score
 
         model = LinearRegression()
-        scores = cross_val_score(model, X, y, cv=n_splits, scoring='r2')
+        scores = cross_val_score(model, X, y, cv=n_splits, scoring="r2")
 
         return {
             "mean_r2": float(np.mean(scores)),
             "std_r2": float(np.std(scores)),
-            "fold_scores": [float(s) for s in scores]
+            "fold_scores": [float(s) for s in scores],
         }
 
 
@@ -252,7 +243,7 @@ class FeatureEngineer:
         return X_normalized, {
             "min": min_vals.tolist(),
             "max": max_vals.tolist(),
-            "ranges": ranges.tolist()
+            "ranges": ranges.tolist(),
         }
 
     @staticmethod
@@ -279,9 +270,7 @@ class FeatureEngineer:
 
     @staticmethod
     def remove_outliers(
-        X: np.ndarray,
-        y: np.ndarray,
-        threshold: float = 3.0
+        X: np.ndarray, y: np.ndarray, threshold: float = 3.0
     ) -> Tuple[np.ndarray, np.ndarray]:
         """
         Remove outliers using z-score method.

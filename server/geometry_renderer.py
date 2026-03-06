@@ -3,11 +3,12 @@ Geometry rendering utilities for creating raster images from GeoJSON.
 Renders points, lines, and polygons to PNG/TIFF format.
 """
 
-from typing import Dict, List, Optional, Tuple
-from PIL import Image, ImageDraw
-import numpy as np
-from shapely.geometry import shape, Point, LineString, Polygon
 import json
+from typing import Dict, List, Tuple
+
+import numpy as np
+from PIL import Image, ImageDraw
+from shapely.geometry import shape
 
 
 class GeometryRenderer:
@@ -20,7 +21,7 @@ class GeometryRenderer:
         background_color: str = "#FFFFFF",
         stroke_color: str = "#000000",
         fill_color: str = "#CCCCCC",
-        stroke_width: int = 2
+        stroke_width: int = 2,
     ):
         """
         Initialize renderer.
@@ -48,7 +49,7 @@ class GeometryRenderer:
     def hex_to_rgb(hex_color: str) -> Tuple[int, int, int]:
         """Convert hex color to RGB tuple."""
         hex_color = hex_color.lstrip("#")
-        return tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
+        return tuple(int(hex_color[i : i + 2], 16) for i in (0, 2, 4))
 
     def create_image(self) -> Image.Image:
         """Create blank image."""
@@ -56,8 +57,8 @@ class GeometryRenderer:
 
     def calculate_bounds(self, geometries: List[Dict]) -> Dict:
         """Calculate bounding box for all geometries."""
-        min_x, min_y = float('inf'), float('inf')
-        max_x, max_y = float('-inf'), float('-inf')
+        min_x, min_y = float("inf"), float("inf")
+        max_x, max_y = float("-inf"), float("-inf")
 
         for geom_dict in geometries:
             try:
@@ -70,7 +71,7 @@ class GeometryRenderer:
             except Exception:
                 continue
 
-        if min_x == float('inf'):
+        if min_x == float("inf"):
             return {"min_x": 0, "min_y": 0, "max_x": 1, "max_y": 1}
 
         # Add padding
@@ -88,7 +89,7 @@ class GeometryRenderer:
             "max_x": max_x,
             "max_y": max_y,
             "width": max_x - min_x,
-            "height": max_y - min_y
+            "height": max_y - min_y,
         }
 
     def project_coordinate(self, x: float, y: float) -> Tuple[int, int]:
@@ -115,11 +116,11 @@ class GeometryRenderer:
                 self.draw.ellipse(
                     [
                         (pixel[0] - radius, pixel[1] - radius),
-                        (pixel[0] + radius, pixel[1] + radius)
+                        (pixel[0] + radius, pixel[1] + radius),
                     ],
                     fill=self.fill_color,
                     outline=self.stroke_color,
-                    width=self.stroke_width
+                    width=self.stroke_width,
                 )
         except Exception as e:
             print(f"Error rendering point: {str(e)}")
@@ -250,9 +251,7 @@ class RasterInterpolator:
 
     @staticmethod
     def inverse_distance_weighting(
-        points: List[Tuple[float, float, float]],
-        grid_size: int = 100,
-        power: float = 2.0
+        points: List[Tuple[float, float, float]], grid_size: int = 100, power: float = 2.0
     ) -> np.ndarray:
         """
         Interpolate using Inverse Distance Weighting (IDW).
@@ -296,7 +295,7 @@ class RasterInterpolator:
                         grid[i, j] = values[distances == 0].mean()
                     else:
                         # IDW formula
-                        weights = 1 / (distances ** power)
+                        weights = 1 / (distances**power)
                         grid[i, j] = np.sum(weights * values) / np.sum(weights)
 
             return grid

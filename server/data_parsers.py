@@ -3,14 +3,13 @@ Data parsers for RGIS and CIAN integration.
 Handles web scraping and API interactions for cadastral and market data.
 """
 
-import json
-import asyncio
-import aiohttp
-from typing import Dict, List, Optional, Any
+import time
 from datetime import datetime
+from typing import Dict, List, Optional
+
+import aiohttp
 import requests
 from bs4 import BeautifulSoup
-import time
 
 
 class RGISParser:
@@ -42,7 +41,7 @@ class RGISParser:
                 "district": parts[1],
                 "quarter": parts[2],
                 "parcel": None,
-                "type": "quarter"
+                "type": "quarter",
             }
         elif len(parts) == 4:
             # Parcel format
@@ -51,7 +50,7 @@ class RGISParser:
                 "district": parts[1],
                 "quarter": parts[2],
                 "parcel": parts[3],
-                "type": "parcel"
+                "type": "parcel",
             }
         elif len(parts) == 5:
             # Address object format
@@ -61,7 +60,7 @@ class RGISParser:
                 "quarter": parts[2],
                 "parcel": parts[3],
                 "address_object": parts[4],
-                "type": "address_object"
+                "type": "address_object",
             }
         else:
             raise ValueError(f"Invalid cadastral number format: {cadastral_number}")
@@ -78,8 +77,8 @@ class RGISParser:
             Property data dictionary or None if not found
         """
         try:
-            # Parse cadastral number
-            parsed = RGISParser.parse_cadastral_number(cadastral_number)
+            # Validate cadastral number format
+            RGISParser.parse_cadastral_number(cadastral_number)
 
             # Build API URL (example - actual URL depends on RGIS API)
             url = f"{RGISParser.BASE_URL}/api/property/{cadastral_number}"
@@ -91,7 +90,7 @@ class RGISParser:
                         return data
                     else:
                         return None
-        except Exception as e:
+        except (aiohttp.ClientError, ValueError) as e:
             print(f"Error fetching RGIS data: {str(e)}")
             return None
 
@@ -115,9 +114,9 @@ class RGISParser:
                 "owner": response_data.get("owner"),
                 "geometry": response_data.get("geometry"),
                 "attributes": response_data.get("attributes", {}),
-                "fetched_at": datetime.utcnow().isoformat()
+                "fetched_at": datetime.utcnow().isoformat(),
             }
-        except Exception:
+        except (KeyError, AttributeError, TypeError):
             return {}
 
 
@@ -125,17 +124,12 @@ class CIANScraper:
     """Scraper for CIAN real estate portal data."""
 
     BASE_URL = "https://spb.cian.ru"
-    HEADERS = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-    }
+    HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
     REQUEST_DELAY = 2  # Delay between requests to avoid blocking
 
     @staticmethod
     def build_search_url(
-        region: str = "spb",
-        property_type: str = "apartment",
-        rooms: int = 1,
-        max_area: int = 30
+        region: str = "spb", property_type: str = "apartment", rooms: int = 1, max_area: int = 30
     ) -> str:
         """
         Build CIAN search URL with filters.
@@ -154,18 +148,14 @@ class CIANScraper:
             "type": property_type,
             "rooms": rooms,
             "maxArea": max_area,
-            "deal_type": "sale"
+            "deal_type": "sale",
         }
 
         query_string = "&".join([f"{k}={v}" for k, v in params.items()])
         return f"{CIANScraper.BASE_URL}/search/?{query_string}"
 
     @staticmethod
-    def scrape_listings(
-        url: str,
-        max_pages: int = 5,
-        delay: float = 2.0
-    ) -> List[Dict]:
+    def scrape_listings(url: str, max_pages: int = 5, delay: float = 2.0) -> List[Dict]:
         """
         Scrape apartment listings from CIAN.
 
@@ -184,11 +174,7 @@ class CIANScraper:
                 page_url = f"{url}&page={page}"
 
                 try:
-                    response = requests.get(
-                        page_url,
-                        headers=CIANScraper.HEADERS,
-                        timeout=10
-                    )
+                    response = requests.get(page_url, headers=CIANScraper.HEADERS, timeout=10)
                     response.raise_for_status()
 
                     soup = BeautifulSoup(response.content, "html.parser")
@@ -213,12 +199,12 @@ class CIANScraper:
 
             return listings
 
-        except Exception as e:
+        except requests.RequestException as e:
             print(f"Error scraping CIAN: {str(e)}")
             return listings
 
     @staticmethod
-    def parse_listing_element(element) -> Optional[Dict]:
+    def parse_listing_element(element: object) -> Optional[Dict]:
         """
         Parse individual listing element.
 
@@ -236,43 +222,43 @@ class CIANScraper:
                 "address": element.find("div", class_="listing-address").text.strip(),
                 "rooms": CIANScraper.extract_rooms(element),
                 "url": element.find("a", class_="listing-link").get("href"),
-                "scraped_at": datetime.utcnow().isoformat()
+                "scraped_at": datetime.utcnow().isoformat(),
             }
             return listing
-        except Exception:
+        except (AttributeError, TypeError):
             return None
 
     @staticmethod
-    def extract_price(element) -> Optional[float]:
+    def extract_price(element: object) -> Optional[float]:
         """Extract price from listing element."""
         try:
             price_text = element.find("div", class_="listing-price").text
             # Remove currency symbols and spaces, convert to float
             price_str = "".join(c for c in price_text if c.isdigit() or c == ".")
             return float(price_str)
-        except Exception:
+        except (ValueError, AttributeError):
             return None
 
     @staticmethod
-    def extract_area(element) -> Optional[float]:
+    def extract_area(element: object) -> Optional[float]:
         """Extract area from listing element."""
         try:
             area_text = element.find("div", class_="listing-area").text
             # Extract numeric value
             area_str = "".join(c for c in area_text if c.isdigit() or c == ".")
             return float(area_str)
-        except Exception:
+        except (ValueError, AttributeError):
             return None
 
     @staticmethod
-    def extract_rooms(element) -> Optional[int]:
+    def extract_rooms(element: object) -> Optional[int]:
         """Extract number of rooms from listing element."""
         try:
             rooms_text = element.find("div", class_="listing-rooms").text
             # Extract numeric value
             rooms_str = "".join(c for c in rooms_text if c.isdigit())
             return int(rooms_str) if rooms_str else None
-        except Exception:
+        except (ValueError, AttributeError):
             return None
 
 
@@ -302,10 +288,10 @@ class GeocodingService:
                     "address": location.address,
                     "latitude": location.latitude,
                     "longitude": location.longitude,
-                    "raw": location.raw
+                    "raw": location.raw,
                 }
             return None
-        except Exception as e:
+        except (ImportError, Exception) as e:
             print(f"Geocoding error: {str(e)}")
             return None
 
@@ -332,10 +318,10 @@ class GeocodingService:
                     "address": location.address,
                     "latitude": location.latitude,
                     "longitude": location.longitude,
-                    "raw": location.raw
+                    "raw": location.raw,
                 }
             return None
-        except Exception as e:
+        except (ImportError, Exception) as e:
             print(f"Reverse geocoding error: {str(e)}")
             return None
 

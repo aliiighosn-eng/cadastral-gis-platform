@@ -4,35 +4,37 @@ Defines API endpoints for geospatial data processing and cadastral workflows.
 """
 
 import os
-import json
-from fastapi import FastAPI, File, UploadFile, HTTPException, Depends, BackgroundTasks
-from fastapi.responses import FileResponse, JSONResponse
-from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy.orm import Session
-from typing import List, Optional
 import shutil
 import tempfile
 from datetime import datetime
+from typing import List
 
-from server.database import init_db, get_db, SessionLocal
-from server.models import (
-    CadastralParcel, LandAssessment, PricingFactor, CadastralValuation,
-    GISFile, ProcessingTask, RegressionModel, MarketData, ProcessingStatus
-)
-from server.gis_utils import (
-    CoordinateTransformer, GeometryParser, SpatialCalculator, LandAssessmentCalculator
-)
+from fastapi import BackgroundTasks, Depends, FastAPI, File, HTTPException, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from sqlalchemy.orm import Session
+
+from server.data_parsers import CIANScraper, GeocodingService
+from server.database import get_db, init_db
 from server.file_processor import FileProcessor, GeoJSONMerger
-from server.pricing_calculator import PricingFactorCalculator
-from server.regression_model import CadastralRegressionModel, ModelValidator
-from server.data_parsers import RGISParser, CIANScraper, GeocodingService
 from server.geometry_renderer import GeometryRenderer
+from server.gis_utils import LandAssessmentCalculator, SpatialCalculator
+from server.models import (
+    GISFile,
+    LandAssessment,
+    MarketData,
+    ProcessingStatus,
+    ProcessingTask,
+    RegressionModel,
+)
+from server.pricing_calculator import PricingFactorCalculator
+from server.regression_model import CadastralRegressionModel
 
 # Initialize FastAPI app
 app = FastAPI(
     title="Gazprom Proekt Cadastral Service",
     description="Comprehensive GIS and real estate data processing platform",
-    version="1.0.0"
+    version="1.0.0",
 )
 
 # Add CORS middleware
@@ -46,18 +48,17 @@ app.add_middleware(
 
 
 @app.on_event("startup")
-async def startup_event():
+async def startup_event() -> None:
     """Initialize database on startup."""
     init_db()
 
 
 # ==================== Coordinate Export Endpoints ====================
 
+
 @app.post("/api/export/coordinates")
 async def export_coordinates(
-    file: UploadFile = File(...),
-    target_system: str = "EPSG:4328",
-    db: Session = Depends(get_db)
+    file: UploadFile = File(...), target_system: str = "EPSG:4328", db: Session = Depends(get_db)
 ):
     """
     Export coordinates from GIS file to Excel.
@@ -99,7 +100,7 @@ async def export_coordinates(
             coordinate_system=target_system,
             feature_count=len(features),
             processed=True,
-            processing_status=ProcessingStatus.COMPLETED
+            processing_status=ProcessingStatus.COMPLETED,
         )
         db.add(gis_file)
         db.commit()
@@ -116,11 +117,12 @@ async def export_coordinates(
 
 # ==================== Land Assessment Endpoints ====================
 
+
 @app.post("/api/assessment/land-use")
 async def assess_land_use(
     parcels_file: UploadFile = File(...),
     centers_file: UploadFile = File(...),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """
     Calculate land use assessment metrics.
@@ -140,7 +142,10 @@ async def assess_land_use(
         parcels_path = os.path.join(temp_dir, "parcels.geojson")
         centers_path = os.path.join(temp_dir, "centers.geojson")
 
-        for uploaded_file, save_path in [(parcels_file, parcels_path), (centers_file, centers_path)]:
+        for uploaded_file, save_path in [
+            (parcels_file, parcels_path),
+            (centers_file, centers_path),
+        ]:
             with open(save_path, "wb") as f:
                 content = await uploaded_file.read()
                 f.write(content)
@@ -171,8 +176,7 @@ async def assess_land_use(
             for center_idx, center_row in centers_gdf.iterrows():
                 center_geom = center_row.geometry
                 distance = SpatialCalculator.calculate_distance(
-                    parcel_centroid,
-                    (center_geom.x, center_geom.y)
+                    parcel_centroid, (center_geom.x, center_geom.y)
                 )
                 distances.append(distance)
 
@@ -185,17 +189,19 @@ async def assess_land_use(
                 elongation_coefficient=elongation,
                 roundness_coefficient=roundness,
                 average_distance_to_centers=avg_distance,
-                perimeter=SpatialCalculator.calculate_perimeter(geometry)
+                perimeter=SpatialCalculator.calculate_perimeter(geometry),
             )
             db.add(assessment)
 
-            results.append({
-                "id": idx,
-                "compactness": compactness,
-                "elongation": elongation,
-                "roundness": roundness,
-                "avg_distance": avg_distance
-            })
+            results.append(
+                {
+                    "id": idx,
+                    "compactness": compactness,
+                    "elongation": elongation,
+                    "roundness": roundness,
+                    "avg_distance": avg_distance,
+                }
+            )
 
         db.commit()
 
@@ -210,11 +216,12 @@ async def assess_land_use(
 
 # ==================== GIS Layer Merger Endpoints ====================
 
+
 @app.post("/api/gis/merge-layers")
 async def merge_layers(
     files: List[UploadFile] = File(...),
     target_system: str = "EPSG:4328",
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """
     Merge multiple GeoJSON layers into single file.
@@ -254,13 +261,14 @@ async def merge_layers(
 
 # ==================== Pricing Factors Endpoints ====================
 
+
 @app.post("/api/pricing/calculate-factors")
 async def calculate_pricing_factors(
     parcel_file: UploadFile = File(...),
     water_file: UploadFile = File(...),
     centers_file: UploadFile = File(...),
     density_file: UploadFile = File(...),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """
     Calculate pricing factors for land parcels.
@@ -283,7 +291,7 @@ async def calculate_pricing_factors(
             "parcel": parcel_file,
             "water": water_file,
             "centers": centers_file,
-            "density": density_file
+            "density": density_file,
         }
 
         file_paths = {}
@@ -308,14 +316,23 @@ async def calculate_pricing_factors(
         water_features = [row.geometry.__geo_interface__ for _, row in water_gdf.iterrows()]
         center_features = [row.geometry.__geo_interface__ for _, row in centers_gdf.iterrows()]
         density_features = [
-            {"geometry": row.geometry.__geo_interface__, "properties": {"density": row.get("density", 0)}}
+            {
+                "geometry": row.geometry.__geo_interface__,
+                "properties": {"density": row.get("density", 0)},
+            }
             for _, row in density_gdf.iterrows()
         ]
 
         # Calculate each factor
-        water_proximity = PricingFactorCalculator.calculate_water_proximity(parcel_geom, water_features)
-        center_distance = PricingFactorCalculator.calculate_local_center_distance(parcel_geom, center_features)
-        population_density = PricingFactorCalculator.calculate_population_density(parcel_geom, density_features)
+        water_proximity = PricingFactorCalculator.calculate_water_proximity(
+            parcel_geom, water_features
+        )
+        center_distance = PricingFactorCalculator.calculate_local_center_distance(
+            parcel_geom, center_features
+        )
+        population_density = PricingFactorCalculator.calculate_population_density(
+            parcel_geom, density_features
+        )
 
         # Calculate composite factor
         composite = PricingFactorCalculator.calculate_composite_factor(
@@ -326,7 +343,7 @@ async def calculate_pricing_factors(
             "water_proximity": water_proximity,
             "center_distance": center_distance,
             "population_density": population_density,
-            "composite_factor": composite
+            "composite_factor": composite,
         }
 
     except Exception as e:
@@ -338,11 +355,9 @@ async def calculate_pricing_factors(
 
 # ==================== Regression Model Endpoints ====================
 
+
 @app.post("/api/regression/train")
-async def train_regression_model(
-    features_data: dict,
-    db: Session = Depends(get_db)
-):
+async def train_regression_model(features_data: dict, db: Session = Depends(get_db)):
     """
     Train cadastral value regression model.
 
@@ -376,27 +391,19 @@ async def train_regression_model(
             coefficients=model.coefficients,
             r_squared=model.r_squared,
             feature_names=feature_names,
-            training_samples=len(X)
+            training_samples=len(X),
         )
         db.add(regression_model)
         db.commit()
 
-        return {
-            "formula": model.get_formula(),
-            "metrics": metrics,
-            "model_id": regression_model.id
-        }
+        return {"formula": model.get_formula(), "metrics": metrics, "model_id": regression_model.id}
 
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 
 @app.post("/api/regression/predict")
-async def predict_cadastral_value(
-    model_id: int,
-    features: dict,
-    db: Session = Depends(get_db)
-):
+async def predict_cadastral_value(model_id: int, features: dict, db: Session = Depends(get_db)):
     """
     Predict cadastral value using trained model.
 
@@ -416,13 +423,15 @@ async def predict_cadastral_value(
 
         # Load model
         model = CadastralRegressionModel(db_model.region)
-        model.load_model_data({
-            "region": db_model.region,
-            "intercept": db_model.coefficients.get("intercept", 0),
-            "coefficients": db_model.coefficients,
-            "feature_names": db_model.feature_names,
-            "r_squared": db_model.r_squared
-        })
+        model.load_model_data(
+            {
+                "region": db_model.region,
+                "intercept": db_model.coefficients.get("intercept", 0),
+                "coefficients": db_model.coefficients,
+                "feature_names": db_model.feature_names,
+                "r_squared": db_model.r_squared,
+            }
+        )
 
         # Predict
         prediction = model.predict_single(features)
@@ -431,7 +440,7 @@ async def predict_cadastral_value(
             "predicted_value": prediction,
             "model_id": model_id,
             "region": db_model.region,
-            "r_squared": db_model.r_squared
+            "r_squared": db_model.r_squared,
         }
 
     except Exception as e:
@@ -440,13 +449,14 @@ async def predict_cadastral_value(
 
 # ==================== Geometry Rendering Endpoints ====================
 
+
 @app.post("/api/render/geometry")
 async def render_geometry(
     file: UploadFile = File(...),
     stroke_color: str = "#000000",
     fill_color: str = "#CCCCCC",
     stroke_width: int = 2,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """
     Render GeoJSON geometry to PNG image.
@@ -473,9 +483,7 @@ async def render_geometry(
 
         # Render
         renderer = GeometryRenderer(
-            stroke_color=stroke_color,
-            fill_color=fill_color,
-            stroke_width=stroke_width
+            stroke_color=stroke_color, fill_color=fill_color, stroke_width=stroke_width
         )
         renderer.render_file(input_file, output_file)
 
@@ -489,6 +497,7 @@ async def render_geometry(
 
 
 # ==================== Geocoding Endpoints ====================
+
 
 @app.post("/api/geocoding/forward")
 async def forward_geocoding(address: str, region: str = "Russia"):
@@ -536,11 +545,10 @@ async def reverse_geocoding(latitude: float, longitude: float):
 
 # ==================== CIAN Scraper Endpoints ====================
 
+
 @app.post("/api/cian/scrape-apartments")
 async def scrape_cian_apartments(
-    max_pages: int = 5,
-    background_tasks: BackgroundTasks = None,
-    db: Session = Depends(get_db)
+    max_pages: int = 5, background_tasks: BackgroundTasks = None, db: Session = Depends(get_db)
 ):
     """
     Scrape one-room apartment data from CIAN.
@@ -558,19 +566,14 @@ async def scrape_cian_apartments(
         task = ProcessingTask(
             task_type="cian_scrape",
             status=ProcessingStatus.PENDING,
-            input_data={"max_pages": max_pages}
+            input_data={"max_pages": max_pages},
         )
         db.add(task)
         db.commit()
 
         # Start scraping in background
         if background_tasks:
-            background_tasks.add_task(
-                scrape_cian_background,
-                task.id,
-                max_pages,
-                db
-            )
+            background_tasks.add_task(scrape_cian_background, task.id, max_pages, db)
 
         return {"task_id": task.id, "status": "pending"}
 
@@ -578,7 +581,7 @@ async def scrape_cian_apartments(
         raise HTTPException(status_code=400, detail=str(e))
 
 
-async def scrape_cian_background(task_id: int, max_pages: int, db: Session):
+async def scrape_cian_background(task_id: int, max_pages: int, db: Session) -> None:
     """Background task for CIAN scraping."""
     try:
         task = db.query(ProcessingTask).filter(ProcessingTask.id == task_id).first()
@@ -590,10 +593,7 @@ async def scrape_cian_background(task_id: int, max_pages: int, db: Session):
 
         # Scrape data
         url = CIANScraper.build_search_url(
-            region="spb",
-            property_type="apartment",
-            rooms=1,
-            max_area=30
+            region="spb", property_type="apartment", rooms=1, max_area=30
         )
         listings = CIANScraper.scrape_listings(url, max_pages)
 
@@ -607,7 +607,7 @@ async def scrape_cian_background(task_id: int, max_pages: int, db: Session):
                 area=listing.get("area"),
                 rooms=listing.get("rooms"),
                 address=listing.get("address"),
-                raw_data=listing
+                raw_data=listing,
             )
             db.add(market_data)
 
@@ -627,30 +627,28 @@ async def scrape_cian_background(task_id: int, max_pages: int, db: Session):
 
 # ==================== Health Check ====================
 
+
 @app.get("/api/health")
-async def health_check():
+async def health_check() -> dict:
     """Health check endpoint."""
     return {"status": "ok", "timestamp": datetime.utcnow().isoformat()}
 
 
 # ==================== Root Endpoint ====================
 
+
 @app.get("/")
-async def root():
+async def root() -> dict:
     """Root endpoint with API information."""
     return {
         "name": "Gazprom Proekt Cadastral Service",
         "version": "1.0.0",
         "description": "Comprehensive GIS and real estate data processing platform",
-        "documentation": "/docs"
+        "documentation": "/docs",
     }
 
 
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(
-        app,
-        host="0.0.0.0",
-        port=int(os.getenv("PORT", 8000))
-    )
+    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))

@@ -3,10 +3,10 @@ Pricing factors calculator for automated land valuation.
 Handles buffer zone analysis, distance calculations, and weighted area computations.
 """
 
-from typing import Dict, List, Optional, Tuple
-from shapely.geometry import shape, Point, Polygon
 import json
-import math
+from typing import Dict, List, Optional
+
+from shapely.geometry import shape
 
 
 class PricingFactorCalculator:
@@ -14,9 +14,7 @@ class PricingFactorCalculator:
 
     @staticmethod
     def calculate_water_proximity(
-        parcel_geometry: Dict,
-        water_features: List[Dict],
-        buffer_distances: List[float] = None
+        parcel_geometry: Dict, water_features: List[Dict], buffer_distances: List[float] = None
     ) -> Optional[float]:
         """
         Calculate water proximity factor using buffer zones.
@@ -56,8 +54,7 @@ class PricingFactorCalculator:
 
     @staticmethod
     def calculate_local_center_distance(
-        parcel_geometry: Dict,
-        center_features: List[Dict]
+        parcel_geometry: Dict, center_features: List[Dict]
     ) -> Optional[float]:
         """
         Calculate distance to nearest local center.
@@ -73,11 +70,11 @@ class PricingFactorCalculator:
             parcel = shape(parcel_geometry)
             parcel_centroid = parcel.centroid
 
-            min_distance = float('inf')
+            min_distance = float("inf")
 
             for center_geom in center_features:
                 center = shape(center_geom)
-                if center.geom_type == 'Point':
+                if center.geom_type == "Point":
                     distance = parcel_centroid.distance(center)
                 else:
                     # For non-point geometries, use centroid
@@ -85,14 +82,13 @@ class PricingFactorCalculator:
 
                 min_distance = min(min_distance, distance)
 
-            return min_distance if min_distance != float('inf') else None
+            return min_distance if min_distance != float("inf") else None
         except Exception:
             return None
 
     @staticmethod
     def calculate_population_density(
-        parcel_geometry: Dict,
-        density_cells: List[Dict]
+        parcel_geometry: Dict, density_cells: List[Dict]
     ) -> Optional[float]:
         """
         Calculate weighted population density.
@@ -144,7 +140,7 @@ class PricingFactorCalculator:
         water_proximity: Optional[float],
         center_distance: Optional[float],
         population_density: Optional[float],
-        weights: Dict[str, float] = None
+        weights: Dict[str, float] = None,
     ) -> float:
         """
         Calculate composite pricing factor from multiple factors.
@@ -159,11 +155,7 @@ class PricingFactorCalculator:
             Composite factor value (0-1 scale)
         """
         if weights is None:
-            weights = {
-                "water": 0.33,
-                "center": 0.33,
-                "density": 0.34
-            }
+            weights = {"water": 0.33, "center": 0.33, "density": 0.34}
 
         factors = []
 
@@ -193,10 +185,7 @@ class PricingFactorCalculator:
         if total_weight == 0:
             return 0.0
 
-        composite = sum(
-            value * weights.get(name, 0)
-            for name, value in factors
-        ) / total_weight
+        composite = sum(value * weights.get(name, 0) for name, value in factors) / total_weight
 
         return round(composite, 4)
 
@@ -205,10 +194,7 @@ class BufferAnalyzer:
     """Analyzes buffer zones for spatial analysis."""
 
     @staticmethod
-    def create_buffer_zones(
-        geometry: Dict,
-        distances: List[float]
-    ) -> Dict[float, Dict]:
+    def create_buffer_zones(geometry: Dict, distances: List[float]) -> Dict[float, Dict]:
         """
         Create multiple buffer zones around a geometry.
 
@@ -232,10 +218,7 @@ class BufferAnalyzer:
             return {}
 
     @staticmethod
-    def calculate_buffer_intersection_area(
-        buffer_geometry: Dict,
-        feature_geometry: Dict
-    ) -> float:
+    def calculate_buffer_intersection_area(buffer_geometry: Dict, feature_geometry: Dict) -> float:
         """Calculate area of intersection between buffer and feature."""
         try:
             buffer = shape(buffer_geometry)
@@ -246,10 +229,7 @@ class BufferAnalyzer:
             return 0.0
 
     @staticmethod
-    def find_features_in_buffer(
-        buffer_geometry: Dict,
-        features: List[Dict]
-    ) -> List[Dict]:
+    def find_features_in_buffer(buffer_geometry: Dict, features: List[Dict]) -> List[Dict]:
         """Find all features intersecting with buffer zone."""
         try:
             buffer = shape(buffer_geometry)

@@ -5,12 +5,11 @@ Handles coordinate system conversions, geometry parsing, and spatial calculation
 
 import json
 import math
-from typing import Dict, List, Tuple, Optional, Any
-from pyproj import Transformer, CRS
+from typing import Any, Dict, List, Optional, Tuple
+
 import geopandas as gpd
-from shapely.geometry import Point, LineString, Polygon, MultiPoint, shape
-from shapely.ops import unary_union
-import numpy as np
+from pyproj import CRS, Transformer
+from shapely.geometry import Point, shape
 
 
 class CoordinateTransformer:
@@ -25,10 +24,7 @@ class CoordinateTransformer:
 
     @staticmethod
     def transform_coordinates(
-        lon: float,
-        lat: float,
-        from_system: str,
-        to_system: str
+        lon: float, lat: float, from_system: str, to_system: str
     ) -> Tuple[float, float]:
         """
         Transform coordinates from one system to another.
@@ -78,7 +74,14 @@ class CoordinateTransformer:
 class GeometryParser:
     """Parses and validates geometric objects."""
 
-    SUPPORTED_TYPES = {"Point", "LineString", "Polygon", "MultiPoint", "MultiLineString", "MultiPolygon"}
+    SUPPORTED_TYPES = {
+        "Point",
+        "LineString",
+        "Polygon",
+        "MultiPoint",
+        "MultiLineString",
+        "MultiPolygon",
+    }
 
     @staticmethod
     def parse_geometry(geometry: Dict) -> Optional[Any]:
@@ -186,7 +189,7 @@ class SpatialCalculator:
                 "x_max": maxx,
                 "y_max": maxy,
                 "width": maxx - minx,
-                "height": maxy - miny
+                "height": maxy - miny,
             }
         except Exception:
             return {}
