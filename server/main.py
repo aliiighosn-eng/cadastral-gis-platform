@@ -12,7 +12,7 @@ from typing import List
 from fastapi import (BackgroundTasks, Depends, FastAPI, File, HTTPException,
                      UploadFile)
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from sqlalchemy.orm import Session
 
 from server.data_parsers import CIANScraper, GeocodingService
@@ -24,6 +24,12 @@ from server.models import (GISFile, LandAssessment, MarketData,
                            ProcessingStatus, ProcessingTask, RegressionModel)
 from server.pricing_calculator import PricingFactorCalculator
 from server.regression_model import CadastralRegressionModel
+from server.middleware.rate_limiter import rate_limiter
+from server.logging_config import setup_logging, get_logger
+
+# Initialize logging
+setup_logging()
+logger = get_logger(__name__)
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -42,10 +48,35 @@ app.add_middleware(
 )
 
 
+@app.middleware("http")
+async def rate_limit_middleware(request, call_next):
+    """Apply rate limiting to all API requests."""
+    client_ip = request.client.host if request.client else "unknown"
+
+    if not rate_limiter.is_allowed(client_ip):
+        return JSONResponse(
+            status_code=429,
+            content={
+                "error": "Too many requests",
+                "message": "Rate limit exceeded. Please try again later.",
+                "stats": rate_limiter.get_client_stats(client_ip),
+            },
+        )
+
+    response = await call_next(request)
+    return response
+
+
 @app.on_event("startup")
 async def startup_event() -> None:
     """Initialize database on startup."""
+    logger.info("Starting Gazprom Proekt Cadastral Service...")
     init_db()
+    logger.info("Database initialized successfully")
+    logger.info(
+        "Gazprom Proekt Cadastral Service started on "
+        "http://localhost:8000"
+    )
 
 
 # ==================== Coordinate Export Endpoints ====================
@@ -666,6 +697,7 @@ async def scrape_cian_background(
 @app.get("/api/health")
 async def health_check() -> dict:
     """Health check endpoint."""
+    logger.debug("Health check requested")
     return {"status": "ok", "timestamp": datetime.utcnow().isoformat()}
 
 
@@ -675,6 +707,7 @@ async def health_check() -> dict:
 @app.get("/")
 async def root() -> dict:
     """Root endpoint with API information."""
+    logger.debug("Root endpoint accessed")
     return {
         "name": "Gazprom Proekt Cadastral Service",
         "version": "1.0.0",
