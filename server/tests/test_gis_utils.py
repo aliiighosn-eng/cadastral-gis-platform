@@ -1,16 +1,14 @@
-"""
+"""test_gis_utils.py
+
 Unit tests for geospatial utilities.
-Tests coordinate transformations, geometry operations, and spatial calculations.
+Tests coordinate transformations, geometry operations, and spatial
+calculations.
 """
 
 import pytest
 
-from server.gis_utils import (
-    CoordinateTransformer,
-    GeometryParser,
-    LandAssessmentCalculator,
-    SpatialCalculator,
-)
+from server.gis_utils import (CoordinateTransformer, GeometryParser,
+                              LandAssessmentCalculator, SpatialCalculator)
 
 
 class TestCoordinateTransformer:
@@ -67,7 +65,15 @@ class TestGeometryParser:
         """Test parsing polygon geometry."""
         geom = {
             "type": "Polygon",
-            "coordinates": [[[30.0, 59.9], [30.1, 59.9], [30.1, 60.0], [30.0, 60.0], [30.0, 59.9]]],
+            "coordinates": [
+                [
+                    [30.0, 59.9],
+                    [30.1, 59.9],
+                    [30.1, 60.0],
+                    [30.0, 60.0],
+                    [30.0, 59.9],
+                ]
+            ],
         }
 
         parsed = GeometryParser.parse_geometry(geom)
@@ -77,7 +83,10 @@ class TestGeometryParser:
 
     def test_validate_geometry(self) -> None:
         """Test geometry validation."""
-        valid_geom = {"type": "Polygon", "coordinates": [[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]]}
+        valid_geom = {
+            "type": "Polygon",
+            "coordinates": [[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]],
+        }
 
         is_valid = GeometryParser.validate_geometry(valid_geom)
         assert is_valid is True
@@ -114,7 +123,10 @@ class TestSpatialCalculator:
 
     def test_calculate_bounds(self) -> None:
         """Test bounding box calculation."""
-        geom = {"type": "Polygon", "coordinates": [[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]]}
+        geom = {
+            "type": "Polygon",
+            "coordinates": [[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]],
+        }
 
         bounds = SpatialCalculator.calculate_bounds(geom)
 
@@ -125,7 +137,10 @@ class TestSpatialCalculator:
 
     def test_calculate_centroid(self) -> None:
         """Test centroid calculation."""
-        geom = {"type": "Polygon", "coordinates": [[[0, 0], [2, 0], [2, 2], [0, 2], [0, 0]]]}
+        geom = {
+            "type": "Polygon",
+            "coordinates": [[[0, 0], [2, 0], [2, 2], [0, 2], [0, 0]]],
+        }
 
         centroid = SpatialCalculator.calculate_centroid(geom)
 
@@ -135,7 +150,10 @@ class TestSpatialCalculator:
 
     def test_calculate_perimeter(self) -> None:
         """Test perimeter calculation."""
-        geom = {"type": "Polygon", "coordinates": [[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]]}
+        geom = {
+            "type": "Polygon",
+            "coordinates": [[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]],
+        }
 
         perimeter = SpatialCalculator.calculate_perimeter(geom)
 
@@ -143,7 +161,10 @@ class TestSpatialCalculator:
 
     def test_calculate_area(self) -> None:
         """Test area calculation."""
-        geom = {"type": "Polygon", "coordinates": [[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]]}
+        geom = {
+            "type": "Polygon",
+            "coordinates": [[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]],
+        }
 
         area = SpatialCalculator.calculate_area(geom)
 
@@ -160,9 +181,15 @@ class TestSpatialCalculator:
 
     def test_intersection(self) -> None:
         """Test geometry intersection."""
-        geom1 = {"type": "Polygon", "coordinates": [[[0, 0], [2, 0], [2, 2], [0, 2], [0, 0]]]}
+        geom1 = {
+            "type": "Polygon",
+            "coordinates": [[[0, 0], [2, 0], [2, 2], [0, 2], [0, 0]]],
+        }
 
-        geom2 = {"type": "Polygon", "coordinates": [[[1, 1], [3, 1], [3, 3], [1, 3], [1, 1]]]}
+        geom2 = {
+            "type": "Polygon",
+            "coordinates": [[[1, 1], [3, 1], [3, 3], [1, 3], [1, 1]]],
+        }
 
         intersection = SpatialCalculator.intersection(geom1, geom2)
 
@@ -176,7 +203,10 @@ class TestLandAssessmentCalculator:
     def test_calculate_compactness(self) -> None:
         """Test compactness coefficient calculation."""
         # Square polygon (most compact)
-        geom = {"type": "Polygon", "coordinates": [[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]]}
+        geom = {
+            "type": "Polygon",
+            "coordinates": [[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]],
+        }
 
         compactness = LandAssessmentCalculator.calculate_compactness(geom)
 
@@ -186,7 +216,10 @@ class TestLandAssessmentCalculator:
     def test_calculate_elongation(self) -> None:
         """Test elongation coefficient calculation."""
         # Rectangular polygon (elongated)
-        geom = {"type": "Polygon", "coordinates": [[[0, 0], [2, 0], [2, 0.5], [0, 0.5], [0, 0]]]}
+        geom = {
+            "type": "Polygon",
+            "coordinates": [[[0, 0], [2, 0], [2, 0.5], [0, 0.5], [0, 0]]],
+        }
 
         bounds = SpatialCalculator.calculate_bounds(geom)
         elongation = LandAssessmentCalculator.calculate_elongation(bounds)
@@ -196,7 +229,10 @@ class TestLandAssessmentCalculator:
     def test_calculate_roundness(self) -> None:
         """Test roundness coefficient calculation."""
         # Circular polygon (most round)
-        geom = {"type": "Polygon", "coordinates": [[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]]}
+        geom = {
+            "type": "Polygon",
+            "coordinates": [[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]],
+        }
 
         roundness = LandAssessmentCalculator.calculate_roundness(geom)
 
@@ -230,7 +266,15 @@ class TestIntegration:
         # Create sample parcel
         parcel = {
             "type": "Polygon",
-            "coordinates": [[[30.0, 59.9], [30.1, 59.9], [30.1, 60.0], [30.0, 60.0], [30.0, 59.9]]],
+            "coordinates": [
+                [
+                    [30.0, 59.9],
+                    [30.1, 59.9],
+                    [30.1, 60.0],
+                    [30.0, 60.0],
+                    [30.0, 59.9],
+                ]
+            ],
         }
 
         # Calculate metrics

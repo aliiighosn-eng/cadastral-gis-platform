@@ -29,7 +29,9 @@ class CadastralRegressionModel:
         self.rmse = 0.0
         self.mae = 0.0
 
-    def train(self, X: np.ndarray, y: np.ndarray, feature_names: List[str]) -> Dict:
+    def train(
+        self, X: np.ndarray, y: np.ndarray, feature_names: List[str]
+    ) -> Dict:
         """
         Train regression model.
 
@@ -50,7 +52,8 @@ class CadastralRegressionModel:
 
             # Store coefficients
             self.coefficients = {
-                name: float(coef) for name, coef in zip(feature_names, self.model.coef_)
+                name: float(coef)
+                for name, coef in zip(feature_names, self.model.coef_)
             }
             self.intercept = float(self.model.intercept_)
 
@@ -144,7 +147,9 @@ class CadastralRegressionModel:
 
         # Reconstruct sklearn model
         self.model = LinearRegression()
-        self.model.coef_ = np.array([self.coefficients.get(name, 0) for name in self.feature_names])
+        self.model.coef_ = np.array(
+            [self.coefficients.get(name, 0) for name in self.feature_names]
+        )
         self.model.intercept_ = self.intercept
 
 
@@ -152,7 +157,9 @@ class ModelValidator:
     """Validates regression model quality."""
 
     @staticmethod
-    def validate_r_squared(r_squared: float, min_threshold: float = 0.6) -> Tuple[bool, str]:
+    def validate_r_squared(
+        r_squared: float, min_threshold: float = 0.6
+    ) -> Tuple[bool, str]:
         """
         Validate R² metric.
 
@@ -166,7 +173,10 @@ class ModelValidator:
         if r_squared >= min_threshold:
             return True, f"R² = {r_squared:.4f} (Good fit)"
         else:
-            return False, f"R² = {r_squared:.4f} (Below threshold {min_threshold})"
+            return (
+                False,
+                f"R² = {r_squared:.4f} (Below threshold {min_threshold})",
+            )
 
     @staticmethod
     def validate_residuals(y_true: np.ndarray, y_pred: np.ndarray) -> Dict:
@@ -192,7 +202,10 @@ class ModelValidator:
 
     @staticmethod
     def cross_validate(
-        X: np.ndarray, y: np.ndarray, feature_names: List[str], n_splits: int = 5
+        X: np.ndarray,
+        y: np.ndarray,
+        feature_names: List[str],
+        n_splits: int = 5,
     ) -> Dict:
         """
         Perform k-fold cross-validation.
@@ -247,7 +260,9 @@ class FeatureEngineer:
         }
 
     @staticmethod
-    def create_polynomial_features(X: np.ndarray, degree: int = 2) -> Tuple[np.ndarray, List[str]]:
+    def create_polynomial_features(
+        X: np.ndarray, degree: int = 2
+    ) -> Tuple[np.ndarray, List[str]]:
         """
         Create polynomial features.
 

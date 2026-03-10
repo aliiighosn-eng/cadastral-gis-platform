@@ -1,6 +1,8 @@
-"""
+"""pricing_calculator.py
+
 Pricing factors calculator for automated land valuation.
-Handles buffer zone analysis, distance calculations, and weighted area computations.
+Handles buffer zone analysis, distance calculations, and weighted area
+computations.
 """
 
 import json
@@ -14,7 +16,9 @@ class PricingFactorCalculator:
 
     @staticmethod
     def calculate_water_proximity(
-        parcel_geometry: Dict, water_features: List[Dict], buffer_distances: List[float] = None
+        parcel_geometry: Dict,
+        water_features: List[Dict],
+        buffer_distances: List[float] = None,
     ) -> Optional[float]:
         """
         Calculate water proximity factor using buffer zones.
@@ -27,10 +31,12 @@ class PricingFactorCalculator:
         Args:
             parcel_geometry: GeoJSON geometry of parcel
             water_features: List of water feature geometries
-            buffer_distances: Buffer distances in meters (default: [10, 50, 150])
+            buffer_distances: Buffer distances in meters
+                (default: [10, 50, 150])
 
         Returns:
-            Smallest buffer distance with intersection, or None if no intersection
+            Smallest buffer distance with intersection, or None if no
+            intersection
         """
         if buffer_distances is None:
             buffer_distances = [10, 50, 150]
@@ -118,7 +124,9 @@ class PricingFactorCalculator:
 
             for cell_data in density_cells:
                 cell_geom = shape(cell_data.get("geometry", {}))
-                density_value = cell_data.get("properties", {}).get("density", 0)
+                density_value = cell_data.get("properties", {}).get(
+                    "density", 0
+                )
 
                 # Calculate intersection
                 intersection = parcel.intersection(cell_geom)
@@ -185,7 +193,10 @@ class PricingFactorCalculator:
         if total_weight == 0:
             return 0.0
 
-        composite = sum(value * weights.get(name, 0) for name, value in factors) / total_weight
+        composite = (
+            sum(value * weights.get(name, 0) for name, value in factors) /
+            total_weight
+        )
 
         return round(composite, 4)
 
@@ -194,7 +205,9 @@ class BufferAnalyzer:
     """Analyzes buffer zones for spatial analysis."""
 
     @staticmethod
-    def create_buffer_zones(geometry: Dict, distances: List[float]) -> Dict[float, Dict]:
+    def create_buffer_zones(
+        geometry: Dict, distances: List[float]
+    ) -> Dict[float, Dict]:
         """
         Create multiple buffer zones around a geometry.
 
@@ -211,14 +224,18 @@ class BufferAnalyzer:
 
             for distance in distances:
                 buffer_geom = geom.buffer(distance)
-                buffers[distance] = json.loads(json.dumps(buffer_geom.__geo_interface__))
+                buffers[distance] = json.loads(
+                    json.dumps(buffer_geom.__geo_interface__)
+                )
 
             return buffers
         except Exception:
             return {}
 
     @staticmethod
-    def calculate_buffer_intersection_area(buffer_geometry: Dict, feature_geometry: Dict) -> float:
+    def calculate_buffer_intersection_area(
+        buffer_geometry: Dict, feature_geometry: Dict
+    ) -> float:
         """Calculate area of intersection between buffer and feature."""
         try:
             buffer = shape(buffer_geometry)
@@ -229,7 +246,9 @@ class BufferAnalyzer:
             return 0.0
 
     @staticmethod
-    def find_features_in_buffer(buffer_geometry: Dict, features: List[Dict]) -> List[Dict]:
+    def find_features_in_buffer(
+        buffer_geometry: Dict, features: List[Dict]
+    ) -> List[Dict]:
         """Find all features intersecting with buffer zone."""
         try:
             buffer = shape(buffer_geometry)

@@ -1,22 +1,15 @@
-"""
+"""models.py
+
 Database models for Gazprom Proekt Cadastral Service.
-Defines core entities for cadastral data, land parcels, pricing factors, and analysis results.
+Defines core entities for cadastral data, land parcels, pricing factors,
+and analysis results.
 """
 
 import enum
 from datetime import datetime
 
-from sqlalchemy import (
-    JSON,
-    Boolean,
-    Column,
-    DateTime,
-    Float,
-    ForeignKey,
-    Integer,
-    String,
-    Text,
-)
+from sqlalchemy import (JSON, Boolean, Column, DateTime, Float, ForeignKey,
+                        Integer, String, Text)
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 
@@ -46,7 +39,9 @@ class CadastralParcel(Base):
     __tablename__ = "cadastral_parcels"
 
     id = Column(Integer, primary_key=True, index=True)
-    cadastral_number = Column(String(50), unique=True, index=True, nullable=False)
+    cadastral_number = Column(
+        String(50), unique=True, index=True, nullable=False
+    )
     name = Column(String(255), nullable=True)
     land_use = Column(String(100), nullable=True)
     area = Column(Float, nullable=True)  # in square meters
@@ -54,7 +49,9 @@ class CadastralParcel(Base):
     coordinate_system = Column(String(20), default=CoordinateSystem.EPSG4328)
     attributes = Column(JSON, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = Column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
 
     # Relationships
     assessments = relationship("LandAssessment", back_populates="parcel")
@@ -68,7 +65,9 @@ class LandAssessment(Base):
     __tablename__ = "land_assessments"
 
     id = Column(Integer, primary_key=True, index=True)
-    parcel_id = Column(Integer, ForeignKey("cadastral_parcels.id"), nullable=False)
+    parcel_id = Column(
+        Integer, ForeignKey("cadastral_parcels.id"), nullable=False
+    )
     compactness_coefficient = Column(Float, nullable=True)
     elongation_coefficient = Column(Float, nullable=True)
     roundness_coefficient = Column(Float, nullable=True)
@@ -86,10 +85,15 @@ class PricingFactor(Base):
     __tablename__ = "pricing_factors"
 
     id = Column(Integer, primary_key=True, index=True)
-    parcel_id = Column(Integer, ForeignKey("cadastral_parcels.id"), nullable=False)
-    water_proximity = Column(Float, nullable=True)  # Distance to water bodies in meters
-    local_center_distance = Column(Float, nullable=True)  # Distance to nearest local center
-    population_density = Column(Float, nullable=True)  # Weighted population density
+    parcel_id = Column(
+        Integer, ForeignKey("cadastral_parcels.id"), nullable=False
+    )
+    # Distance to water bodies in meters
+    water_proximity = Column(Float, nullable=True)
+    # Distance to nearest local center
+    local_center_distance = Column(Float, nullable=True)
+    # Weighted population density
+    population_density = Column(Float, nullable=True)
     factor_type = Column(String(50), nullable=True)  # Type of factor
     calculated_at = Column(DateTime, default=datetime.utcnow)
 
@@ -102,10 +106,14 @@ class CadastralValuation(Base):
     __tablename__ = "cadastral_valuations"
 
     id = Column(Integer, primary_key=True, index=True)
-    parcel_id = Column(Integer, ForeignKey("cadastral_parcels.id"), nullable=False)
-    valuation_value = Column(Float, nullable=False)  # Calculated cadastral value
+    parcel_id = Column(
+        Integer, ForeignKey("cadastral_parcels.id"), nullable=False
+    )
+    # Calculated cadastral value
+    valuation_value = Column(Float, nullable=False)
     model_r_squared = Column(Float, nullable=True)  # R² metric
-    model_coefficients = Column(JSON, nullable=True)  # Regression model coefficients
+    # Regression model coefficients
+    model_coefficients = Column(JSON, nullable=True)
     calculation_method = Column(String(100), nullable=True)
     valuation_date = Column(DateTime, default=datetime.utcnow)
 
@@ -136,7 +144,8 @@ class ProcessingTask(Base):
     __tablename__ = "processing_tasks"
 
     id = Column(Integer, primary_key=True, index=True)
-    task_type = Column(String(100), nullable=False)  # export, merge, assess, etc.
+    # export, merge, assess, etc.
+    task_type = Column(String(100), nullable=False)
     status = Column(String(20), default=ProcessingStatus.PENDING)
     input_data = Column(JSON, nullable=True)
     output_data = Column(JSON, nullable=True)
@@ -153,12 +162,15 @@ class RegressionModel(Base):
     id = Column(Integer, primary_key=True, index=True)
     model_name = Column(String(100), nullable=False)
     region = Column(String(100), nullable=False)  # e.g., "Saint Petersburg"
-    coefficients = Column(JSON, nullable=False)  # Model coefficients {a0, a1, a2, ...}
+    # Model coefficients {a0, a1, a2, ...}
+    coefficients = Column(JSON, nullable=False)
     r_squared = Column(Float, nullable=False)
     feature_names = Column(JSON, nullable=False)  # List of feature names
     training_samples = Column(Integer, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = Column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
 
 
 class MarketData(Base):
@@ -189,7 +201,8 @@ class TelegramUser(Base):
     username = Column(String(100), nullable=True)
     first_name = Column(String(100), nullable=True)
     last_name = Column(String(100), nullable=True)
-    state = Column(String(50), default="idle")  # idle, waiting_for_cadastral_number, etc.
+    # idle, waiting_for_cadastral_number, etc.
+    state = Column(String(50), default="idle")
     last_interaction = Column(DateTime, default=datetime.utcnow)
     created_at = Column(DateTime, default=datetime.utcnow)
 

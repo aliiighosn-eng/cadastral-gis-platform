@@ -17,12 +17,19 @@ DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./gazprom_proekt.db")
 # Create engine with appropriate pool settings
 if DATABASE_URL.startswith("postgresql"):
     engine = create_engine(
-        DATABASE_URL, echo=False, pool_pre_ping=True, pool_size=10, max_overflow=20
+        DATABASE_URL,
+        echo=False,
+        pool_pre_ping=True,
+        pool_size=10,
+        max_overflow=20,
     )
 else:
     # SQLite for development
     engine = create_engine(
-        DATABASE_URL, connect_args={"check_same_thread": False}, poolclass=NullPool, echo=False
+        DATABASE_URL,
+        connect_args={"check_same_thread": False},
+        poolclass=NullPool,
+        echo=False,
     )
 
 # Create session factory

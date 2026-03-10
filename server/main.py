@@ -9,7 +9,8 @@ import tempfile
 from datetime import datetime
 from typing import List
 
-from fastapi import BackgroundTasks, Depends, FastAPI, File, HTTPException, UploadFile
+from fastapi import (BackgroundTasks, Depends, FastAPI, File, HTTPException,
+                     UploadFile)
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
@@ -19,14 +20,8 @@ from server.database import get_db, init_db
 from server.file_processor import FileProcessor, GeoJSONMerger
 from server.geometry_renderer import GeometryRenderer
 from server.gis_utils import LandAssessmentCalculator, SpatialCalculator
-from server.models import (
-    GISFile,
-    LandAssessment,
-    MarketData,
-    ProcessingStatus,
-    ProcessingTask,
-    RegressionModel,
-)
+from server.models import (GISFile, LandAssessment, MarketData,
+                           ProcessingStatus, ProcessingTask, RegressionModel)
 from server.pricing_calculator import PricingFactorCalculator
 from server.regression_model import CadastralRegressionModel
 
@@ -58,7 +53,9 @@ async def startup_event() -> None:
 
 @app.post("/api/export/coordinates")
 async def export_coordinates(
-    file: UploadFile = File(...), target_system: str = "EPSG:4328", db: Session = Depends(get_db)
+    file: UploadFile = File(...),
+    target_system: str = "EPSG:4328",
+    db: Session = Depends(get_db),
 ):
     """
     Export coordinates from GIS file to Excel.
@@ -165,7 +162,9 @@ async def assess_land_use(
             bounds = SpatialCalculator.calculate_bounds(geometry)
 
             # Calculate coefficients
-            compactness = LandAssessmentCalculator.calculate_compactness(geometry)
+            compactness = LandAssessmentCalculator.calculate_compactness(
+                geometry
+            )
             elongation = LandAssessmentCalculator.calculate_elongation(bounds)
             roundness = LandAssessmentCalculator.calculate_roundness(geometry)
 
@@ -313,8 +312,12 @@ async def calculate_pricing_factors(
 
         # Calculate factors
         parcel_geom = parcel_gdf.iloc[0].geometry.__geo_interface__
-        water_features = [row.geometry.__geo_interface__ for _, row in water_gdf.iterrows()]
-        center_features = [row.geometry.__geo_interface__ for _, row in centers_gdf.iterrows()]
+        water_features = [
+            row.geometry.__geo_interface__ for _, row in water_gdf.iterrows()
+        ]
+        center_features = [
+            row.geometry.__geo_interface__ for _, row in centers_gdf.iterrows()
+        ]
         density_features = [
             {
                 "geometry": row.geometry.__geo_interface__,
@@ -327,11 +330,15 @@ async def calculate_pricing_factors(
         water_proximity = PricingFactorCalculator.calculate_water_proximity(
             parcel_geom, water_features
         )
-        center_distance = PricingFactorCalculator.calculate_local_center_distance(
-            parcel_geom, center_features
+        center_distance = (
+            PricingFactorCalculator.calculate_local_center_distance(
+                parcel_geom, center_features
+            )
         )
-        population_density = PricingFactorCalculator.calculate_population_density(
-            parcel_geom, density_features
+        population_density = (
+            PricingFactorCalculator.calculate_population_density(
+                parcel_geom, density_features
+            )
         )
 
         # Calculate composite factor
@@ -357,7 +364,9 @@ async def calculate_pricing_factors(
 
 
 @app.post("/api/regression/train")
-async def train_regression_model(features_data: dict, db: Session = Depends(get_db)):
+async def train_regression_model(
+    features_data: dict, db: Session = Depends(get_db)
+):
     """
     Train cadastral value regression model.
 
@@ -396,14 +405,20 @@ async def train_regression_model(features_data: dict, db: Session = Depends(get_
         db.add(regression_model)
         db.commit()
 
-        return {"formula": model.get_formula(), "metrics": metrics, "model_id": regression_model.id}
+        return {
+            "formula": model.get_formula(),
+            "metrics": metrics,
+            "model_id": regression_model.id,
+        }
 
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 
 @app.post("/api/regression/predict")
-async def predict_cadastral_value(model_id: int, features: dict, db: Session = Depends(get_db)):
+async def predict_cadastral_value(
+    model_id: int, features: dict, db: Session = Depends(get_db)
+):
     """
     Predict cadastral value using trained model.
 
@@ -417,7 +432,11 @@ async def predict_cadastral_value(model_id: int, features: dict, db: Session = D
     """
     try:
         # Get model from database
-        db_model = db.query(RegressionModel).filter(RegressionModel.id == model_id).first()
+        db_model = (
+            db.query(RegressionModel)
+            .filter(RegressionModel.id == model_id)
+            .first()
+        )
         if not db_model:
             raise ValueError("Model not found")
 
@@ -483,7 +502,9 @@ async def render_geometry(
 
         # Render
         renderer = GeometryRenderer(
-            stroke_color=stroke_color, fill_color=fill_color, stroke_width=stroke_width
+            stroke_color=stroke_color,
+            fill_color=fill_color,
+            stroke_width=stroke_width,
         )
         renderer.render_file(input_file, output_file)
 
@@ -548,7 +569,9 @@ async def reverse_geocoding(latitude: float, longitude: float):
 
 @app.post("/api/cian/scrape-apartments")
 async def scrape_cian_apartments(
-    max_pages: int = 5, background_tasks: BackgroundTasks = None, db: Session = Depends(get_db)
+    max_pages: int = 5,
+    background_tasks: BackgroundTasks = None,
+    db: Session = Depends(get_db),
 ):
     """
     Scrape one-room apartment data from CIAN.
@@ -573,7 +596,9 @@ async def scrape_cian_apartments(
 
         # Start scraping in background
         if background_tasks:
-            background_tasks.add_task(scrape_cian_background, task.id, max_pages, db)
+            background_tasks.add_task(
+                scrape_cian_background, task.id, max_pages, db
+            )
 
         return {"task_id": task.id, "status": "pending"}
 
@@ -581,10 +606,16 @@ async def scrape_cian_apartments(
         raise HTTPException(status_code=400, detail=str(e))
 
 
-async def scrape_cian_background(task_id: int, max_pages: int, db: Session) -> None:
+async def scrape_cian_background(
+    task_id: int, max_pages: int, db: Session
+) -> None:
     """Background task for CIAN scraping."""
     try:
-        task = db.query(ProcessingTask).filter(ProcessingTask.id == task_id).first()
+        task = (
+            db.query(ProcessingTask)
+            .filter(ProcessingTask.id == task_id)
+            .first()
+        )
         if not task:
             return
 
@@ -618,7 +649,11 @@ async def scrape_cian_background(task_id: int, max_pages: int, db: Session) -> N
         db.commit()
 
     except Exception as e:
-        task = db.query(ProcessingTask).filter(ProcessingTask.id == task_id).first()
+        task = (
+            db.query(ProcessingTask)
+            .filter(ProcessingTask.id == task_id)
+            .first()
+        )
         if task:
             task.status = ProcessingStatus.FAILED
             task.error_message = str(e)
@@ -643,7 +678,9 @@ async def root() -> dict:
     return {
         "name": "Gazprom Proekt Cadastral Service",
         "version": "1.0.0",
-        "description": "Comprehensive GIS and real estate data processing platform",
+        "description": (
+            "Comprehensive GIS and real estate data processing platform"
+        ),
         "documentation": "/docs",
     }
 

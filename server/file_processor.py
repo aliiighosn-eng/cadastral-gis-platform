@@ -83,7 +83,9 @@ class FileProcessor:
             feature = {
                 "id": idx,
                 "geometry": row.geometry.__geo_interface__,
-                "properties": {k: v for k, v in row.items() if k != "geometry"},
+                "properties": {
+                    k: v for k, v in row.items() if k != "geometry"
+                },
             }
             features.append(feature)
 
@@ -117,7 +119,9 @@ class FileProcessor:
         ws.append(headers)
 
         # Style header
-        header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+        header_fill = PatternFill(
+            start_color="4472C4", end_color="4472C4", fill_type="solid"
+        )
         header_font = Font(bold=True, color="FFFFFF")
 
         for cell in ws[1]:
@@ -140,8 +144,10 @@ class FileProcessor:
             for x, y in coords:
                 # Transform coordinates if needed
                 try:
-                    transformed_x, transformed_y = CoordinateTransformer.transform_coordinates(
-                        x, y, source_system, target_system
+                    transformed_x, transformed_y = (
+                        CoordinateTransformer.transform_coordinates(
+                            x, y, source_system, target_system
+                        )
                     )
                 except (ValueError, TypeError):
                     transformed_x, transformed_y = x, y
@@ -176,7 +182,9 @@ class GeoJSONMerger:
 
     @staticmethod
     def merge_layers(
-        file_paths: List[str], output_path: str, target_system: str = "EPSG:4328"
+        file_paths: List[str],
+        output_path: str,
+        target_system: str = "EPSG:4328",
     ) -> str:
         """
         Merge multiple GeoJSON layers into a single file.
@@ -218,7 +226,10 @@ class GeoJSONMerger:
                 continue
 
         # Create FeatureCollection
-        feature_collection = {"type": "FeatureCollection", "features": merged_features}
+        feature_collection = {
+            "type": "FeatureCollection",
+            "features": merged_features,
+        }
 
         # Save to file
         with open(output_path, "w", encoding="utf-8") as f:

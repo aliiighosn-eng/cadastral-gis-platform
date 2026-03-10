@@ -1,6 +1,8 @@
-"""
-Core geospatial utilities for coordinate transformations and geometry operations.
-Handles coordinate system conversions, geometry parsing, and spatial calculations.
+"""gis_utils.py
+
+Core geospatial utilities for coordinate transformations and geometry.
+Handles coordinate system conversions, geometry parsing, and spatial
+calculations.
 """
 
 import json
@@ -19,7 +21,8 @@ class CoordinateTransformer:
     SYSTEMS = {
         "MSK-64": "EPSG:28465",  # Moscow Zone 1 (approximate)
         "EPSG:3857": "EPSG:3857",  # Web Mercator
-        "EPSG:4328": "EPSG:4326",  # WGS84 (note: 4328 is likely a typo in requirements, using 4326)
+        # WGS84 (note: 4328 is likely a typo in requirements, using 4326)
+        "EPSG:4328": "EPSG:4326",
     }
 
     @staticmethod
@@ -39,15 +42,23 @@ class CoordinateTransformer:
             Tuple of transformed coordinates (x, y)
         """
         try:
-            from_crs = CRS.from_string(CoordinateTransformer.SYSTEMS.get(from_system, from_system))
-            to_crs = CRS.from_string(CoordinateTransformer.SYSTEMS.get(to_system, to_system))
-            transformer = Transformer.from_crs(from_crs, to_crs, always_xy=True)
+            from_crs = CRS.from_string(
+                CoordinateTransformer.SYSTEMS.get(from_system, from_system)
+            )
+            to_crs = CRS.from_string(
+                CoordinateTransformer.SYSTEMS.get(to_system, to_system)
+            )
+            transformer = Transformer.from_crs(
+                from_crs, to_crs, always_xy=True
+            )
             return transformer.transform(lon, lat)
         except Exception as e:
             raise ValueError(f"Coordinate transformation failed: {str(e)}")
 
     @staticmethod
-    def transform_geometry(geometry: Dict, from_system: str, to_system: str) -> Dict:
+    def transform_geometry(
+        geometry: Dict, from_system: str, to_system: str
+    ) -> Dict:
         """
         Transform a GeoJSON geometry from one coordinate system to another.
 
@@ -60,10 +71,16 @@ class CoordinateTransformer:
             Transformed GeoJSON geometry
         """
         try:
-            from_crs = CRS.from_string(CoordinateTransformer.SYSTEMS.get(from_system, from_system))
-            to_crs = CRS.from_string(CoordinateTransformer.SYSTEMS.get(to_system, to_system))
+            from_crs = CRS.from_string(
+                CoordinateTransformer.SYSTEMS.get(from_system, from_system)
+            )
+            to_crs = CRS.from_string(
+                CoordinateTransformer.SYSTEMS.get(to_system, to_system)
+            )
 
-            gdf = gpd.GeoDataFrame([{"geometry": shape(geometry)}], crs=from_crs)
+            gdf = gpd.GeoDataFrame(
+                [{"geometry": shape(geometry)}], crs=from_crs
+            )
             gdf_transformed = gdf.to_crs(to_crs)
 
             return json.loads(gdf_transformed.geometry.iloc[0].geom_type)
@@ -195,7 +212,9 @@ class SpatialCalculator:
             return {}
 
     @staticmethod
-    def calculate_distance(point1: Tuple[float, float], point2: Tuple[float, float]) -> float:
+    def calculate_distance(
+        point1: Tuple[float, float], point2: Tuple[float, float]
+    ) -> float:
         """Calculate distance between two points in meters."""
         try:
             p1 = Point(point1)
@@ -287,7 +306,9 @@ class LandAssessmentCalculator:
             return 0.0
 
     @staticmethod
-    def calculate_roundness(geometry: Dict, center_distance: float = None) -> float:
+    def calculate_roundness(
+        geometry: Dict, center_distance: float = None
+    ) -> float:
         """
         Calculate roundness coefficient.
         Formula: k_okr = (2 * d) / sqrt(2 * P)
@@ -302,7 +323,12 @@ class LandAssessmentCalculator:
 
             if center_distance is None:
                 centroid = geom.centroid
-                max_dist = max([centroid.distance(Point(coord)) for coord in geom.exterior.coords])
+                max_dist = max(
+                    [
+                        centroid.distance(Point(coord))
+                        for coord in geom.exterior.coords
+                    ]
+                )
             else:
                 max_dist = center_distance
 
@@ -312,7 +338,9 @@ class LandAssessmentCalculator:
             return 0.0
 
     @staticmethod
-    def calculate_development_coefficient(agricultural_area: float, total_area: float) -> float:
+    def calculate_development_coefficient(
+        agricultural_area: float, total_area: float
+    ) -> float:
         """
         Calculate development coefficient.
         Formula: k_o = (P_ag * 100) / P
