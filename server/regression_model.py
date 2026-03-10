@@ -29,9 +29,7 @@ class CadastralRegressionModel:
         self.rmse = 0.0
         self.mae = 0.0
 
-    def train(
-        self, X: np.ndarray, y: np.ndarray, feature_names: List[str]
-    ) -> Dict:
+    def train(self, X: np.ndarray, y: np.ndarray, feature_names: List[str]) -> Dict:
         """
         Train regression model.
 
@@ -52,8 +50,7 @@ class CadastralRegressionModel:
 
             # Store coefficients
             self.coefficients = {
-                name: float(coef)
-                for name, coef in zip(feature_names, self.model.coef_)
+                name: float(coef) for name, coef in zip(feature_names, self.model.coef_)
             }
             self.intercept = float(self.model.intercept_)
 

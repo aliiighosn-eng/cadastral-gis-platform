@@ -9,8 +9,14 @@ from datetime import datetime
 from typing import Dict, Optional
 
 from telegram import ReplyKeyboardMarkup, ReplyKeyboardRemove, Update
-from telegram.ext import (Application, CommandHandler, ContextTypes,
-                          ConversationHandler, MessageHandler, filters)
+from telegram.ext import (
+    Application,
+    CommandHandler,
+    ContextTypes,
+    ConversationHandler,
+    MessageHandler,
+    filters,
+)
 
 # Configure logging
 logging.basicConfig(
@@ -118,9 +124,7 @@ class GazpromTelegramBot:
             "• 78:6:2108:6:3 - учетный номер объекта адресной системы"
         )
 
-        await update.message.reply_text(
-            message, reply_markup=ReplyKeyboardRemove()
-        )
+        await update.message.reply_text(message, reply_markup=ReplyKeyboardRemove())
 
         return ENTERING_CADASTRAL
 
@@ -157,12 +161,10 @@ class GazpromTelegramBot:
                 await update.message.reply_document(
                     document=open(geojson_file, "rb"),
                     filename=(
-                        f"property_{cadastral_number.replace(':', '_')}"
-                        ".geojson"
+                        f"property_{cadastral_number.replace(':', '_')}" ".geojson"
                     ),
                     caption=(
-                        f"📄 Данные для кадастрового номера: "
-                        f"{cadastral_number}"
+                        f"📄 Данные для кадастрового номера: " f"{cadastral_number}"
                     ),
                 )
 
@@ -208,9 +210,7 @@ class GazpromTelegramBot:
 
         return True
 
-    async def fetch_property_data(
-        self, cadastral_number: str
-    ) -> Optional[Dict]:
+    async def fetch_property_data(self, cadastral_number: str) -> Optional[Dict]:
         """
         Fetch property data from RGIS or database.
 
@@ -257,9 +257,7 @@ class GazpromTelegramBot:
                 {
                     "type": "Feature",
                     "properties": {
-                        "cadastral_number": property_data.get(
-                            "cadastral_number"
-                        ),
+                        "cadastral_number": property_data.get("cadastral_number"),
                         "address": property_data.get("address"),
                         "area": property_data.get("area"),
                         "land_use": property_data.get("land_use"),
@@ -270,7 +268,7 @@ class GazpromTelegramBot:
         }
 
         # Save to temporary file
-        cad_num = property_data.get('cadastral_number', 'unknown')
+        cad_num = property_data.get("cadastral_number", "unknown")
         filename = f"/tmp/property_{cad_num.replace(':', '_')}.geojson"
 
         with open(filename, "w", encoding="utf-8") as f:
@@ -281,10 +279,10 @@ class GazpromTelegramBot:
     @staticmethod
     def format_property_info(property_data: Dict) -> str:
         """Format property information for display."""
-        cad_num = property_data.get('cadastral_number', 'N/A')
-        address = property_data.get('address', 'N/A')
-        area = property_data.get('area', 'N/A')
-        land_use = property_data.get('land_use', 'N/A')
+        cad_num = property_data.get("cadastral_number", "N/A")
+        address = property_data.get("address", "N/A")
+        area = property_data.get("area", "N/A")
+        land_use = property_data.get("land_use", "N/A")
         message = (
             f"📋 Информация об объекте:\n\n"
             f"🔢 Кадастровый номер: {cad_num}\n"
@@ -324,9 +322,7 @@ class GazpromTelegramBot:
         """Setup message handlers."""
         # Create conversation handler
         conv_handler = ConversationHandler(
-            entry_points=[
-                CommandHandler("start_parse", self.start_parse_command)
-            ],
+            entry_points=[CommandHandler("start_parse", self.start_parse_command)],
             states={
                 SELECTING_TYPE: [
                     MessageHandler(
@@ -345,9 +341,7 @@ class GazpromTelegramBot:
         )
 
         # Add handlers
-        self.application.add_handler(
-            CommandHandler("start", self.start_command)
-        )
+        self.application.add_handler(CommandHandler("start", self.start_command))
         self.application.add_handler(CommandHandler("help", self.help_command))
         self.application.add_handler(conv_handler)
 

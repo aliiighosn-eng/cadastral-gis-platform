@@ -85,8 +85,7 @@ class TestCoordinateExportEndpoint:
 
             assert response.status_code == 200
             content_type = (
-                "application/vnd.openxmlformats-officedocument"
-                ".spreadsheetml.sheet"
+                "application/vnd.openxmlformats-officedocument" ".spreadsheetml.sheet"
             )
             assert response.headers["content-type"] == content_type
         finally:
@@ -113,9 +112,7 @@ class TestLandAssessmentEndpoint:
                     "properties": {"id": 1},
                     "geometry": {
                         "type": "Polygon",
-                        "coordinates": [
-                            [[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]
-                        ],
+                        "coordinates": [[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]],
                     },
                 }
             ],
@@ -146,9 +143,7 @@ class TestLandAssessmentEndpoint:
             centers_path = f.name
 
         try:
-            with open(parcels_path, "rb") as pf, open(
-                centers_path, "rb"
-            ) as cf:
+            with open(parcels_path, "rb") as pf, open(centers_path, "rb") as cf:
                 response = client.post(
                     "/api/assessment/land-use",
                     files={
@@ -287,9 +282,7 @@ class TestRenderingEndpoint:
                     "type": "Feature",
                     "geometry": {
                         "type": "Polygon",
-                        "coordinates": [
-                            [[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]
-                        ],
+                        "coordinates": [[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]],
                     },
                 }
             ],
@@ -324,9 +317,7 @@ class TestCIANScraperEndpoint:
 
     def test_scrape_apartments(self) -> None:
         """Test CIAN scraper endpoint."""
-        response = client.post(
-            "/api/cian/scrape-apartments", json={"max_pages": 1}
-        )
+        response = client.post("/api/cian/scrape-apartments", json={"max_pages": 1})
 
         assert response.status_code == 200
         data = response.json()

@@ -8,8 +8,17 @@ and analysis results.
 import enum
 from datetime import datetime
 
-from sqlalchemy import (JSON, Boolean, Column, DateTime, Float, ForeignKey,
-                        Integer, String, Text)
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    Column,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+)
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 
@@ -39,9 +48,7 @@ class CadastralParcel(Base):
     __tablename__ = "cadastral_parcels"
 
     id = Column(Integer, primary_key=True, index=True)
-    cadastral_number = Column(
-        String(50), unique=True, index=True, nullable=False
-    )
+    cadastral_number = Column(String(50), unique=True, index=True, nullable=False)
     name = Column(String(255), nullable=True)
     land_use = Column(String(100), nullable=True)
     area = Column(Float, nullable=True)  # in square meters
@@ -49,9 +56,7 @@ class CadastralParcel(Base):
     coordinate_system = Column(String(20), default=CoordinateSystem.EPSG4328)
     attributes = Column(JSON, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(
-        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
-    )
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
     assessments = relationship("LandAssessment", back_populates="parcel")
@@ -65,9 +70,7 @@ class LandAssessment(Base):
     __tablename__ = "land_assessments"
 
     id = Column(Integer, primary_key=True, index=True)
-    parcel_id = Column(
-        Integer, ForeignKey("cadastral_parcels.id"), nullable=False
-    )
+    parcel_id = Column(Integer, ForeignKey("cadastral_parcels.id"), nullable=False)
     compactness_coefficient = Column(Float, nullable=True)
     elongation_coefficient = Column(Float, nullable=True)
     roundness_coefficient = Column(Float, nullable=True)
@@ -85,9 +88,7 @@ class PricingFactor(Base):
     __tablename__ = "pricing_factors"
 
     id = Column(Integer, primary_key=True, index=True)
-    parcel_id = Column(
-        Integer, ForeignKey("cadastral_parcels.id"), nullable=False
-    )
+    parcel_id = Column(Integer, ForeignKey("cadastral_parcels.id"), nullable=False)
     # Distance to water bodies in meters
     water_proximity = Column(Float, nullable=True)
     # Distance to nearest local center
@@ -106,9 +107,7 @@ class CadastralValuation(Base):
     __tablename__ = "cadastral_valuations"
 
     id = Column(Integer, primary_key=True, index=True)
-    parcel_id = Column(
-        Integer, ForeignKey("cadastral_parcels.id"), nullable=False
-    )
+    parcel_id = Column(Integer, ForeignKey("cadastral_parcels.id"), nullable=False)
     # Calculated cadastral value
     valuation_value = Column(Float, nullable=False)
     model_r_squared = Column(Float, nullable=True)  # R² metric
@@ -168,9 +167,7 @@ class RegressionModel(Base):
     feature_names = Column(JSON, nullable=False)  # List of feature names
     training_samples = Column(Integer, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(
-        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
-    )
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
 class MarketData(Base):

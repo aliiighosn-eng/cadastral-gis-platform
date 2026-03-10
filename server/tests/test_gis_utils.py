@@ -7,8 +7,12 @@ calculations.
 
 import pytest
 
-from server.gis_utils import (CoordinateTransformer, GeometryParser,
-                              LandAssessmentCalculator, SpatialCalculator)
+from server.gis_utils import (
+    CoordinateTransformer,
+    GeometryParser,
+    LandAssessmentCalculator,
+    SpatialCalculator,
+)
 
 
 class TestCoordinateTransformer:

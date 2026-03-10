@@ -48,17 +48,13 @@ class CoordinateTransformer:
             to_crs = CRS.from_string(
                 CoordinateTransformer.SYSTEMS.get(to_system, to_system)
             )
-            transformer = Transformer.from_crs(
-                from_crs, to_crs, always_xy=True
-            )
+            transformer = Transformer.from_crs(from_crs, to_crs, always_xy=True)
             return transformer.transform(lon, lat)
         except Exception as e:
             raise ValueError(f"Coordinate transformation failed: {str(e)}")
 
     @staticmethod
-    def transform_geometry(
-        geometry: Dict, from_system: str, to_system: str
-    ) -> Dict:
+    def transform_geometry(geometry: Dict, from_system: str, to_system: str) -> Dict:
         """
         Transform a GeoJSON geometry from one coordinate system to another.
 
@@ -78,9 +74,7 @@ class CoordinateTransformer:
                 CoordinateTransformer.SYSTEMS.get(to_system, to_system)
             )
 
-            gdf = gpd.GeoDataFrame(
-                [{"geometry": shape(geometry)}], crs=from_crs
-            )
+            gdf = gpd.GeoDataFrame([{"geometry": shape(geometry)}], crs=from_crs)
             gdf_transformed = gdf.to_crs(to_crs)
 
             return json.loads(gdf_transformed.geometry.iloc[0].geom_type)
@@ -306,9 +300,7 @@ class LandAssessmentCalculator:
             return 0.0
 
     @staticmethod
-    def calculate_roundness(
-        geometry: Dict, center_distance: float = None
-    ) -> float:
+    def calculate_roundness(geometry: Dict, center_distance: float = None) -> float:
         """
         Calculate roundness coefficient.
         Formula: k_okr = (2 * d) / sqrt(2 * P)
@@ -324,10 +316,7 @@ class LandAssessmentCalculator:
             if center_distance is None:
                 centroid = geom.centroid
                 max_dist = max(
-                    [
-                        centroid.distance(Point(coord))
-                        for coord in geom.exterior.coords
-                    ]
+                    [centroid.distance(Point(coord)) for coord in geom.exterior.coords]
                 )
             else:
                 max_dist = center_distance

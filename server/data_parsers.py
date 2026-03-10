@@ -63,9 +63,7 @@ class RGISParser:
                 "type": "address_object",
             }
         else:
-            raise ValueError(
-                f"Invalid cadastral number format: {cadastral_number}"
-            )
+            raise ValueError(f"Invalid cadastral number format: {cadastral_number}")
 
     @staticmethod
     async def fetch_property_data(cadastral_number: str) -> Optional[Dict]:
@@ -86,9 +84,7 @@ class RGISParser:
             url = f"{RGISParser.BASE_URL}/api/property/{cadastral_number}"
 
             async with aiohttp.ClientSession() as session:
-                async with session.get(
-                    url, timeout=RGISParser.TIMEOUT
-                ) as response:
+                async with session.get(url, timeout=RGISParser.TIMEOUT) as response:
                     if response.status == 200:
                         data = await response.json()
                         return data
@@ -129,9 +125,7 @@ class CIANScraper:
 
     BASE_URL = "https://spb.cian.ru"
     HEADERS = {
-        "User-Agent": (
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-        )
+        "User-Agent": ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
     }
     REQUEST_DELAY = 2  # Delay between requests to avoid blocking
 
@@ -166,9 +160,7 @@ class CIANScraper:
         return f"{CIANScraper.BASE_URL}/search/?{query_string}"
 
     @staticmethod
-    def scrape_listings(
-        url: str, max_pages: int = 5, delay: float = 2.0
-    ) -> List[Dict]:
+    def scrape_listings(url: str, max_pages: int = 5, delay: float = 2.0) -> List[Dict]:
         """
         Scrape apartment listings from CIAN.
 
@@ -196,9 +188,7 @@ class CIANScraper:
 
                     # Extract listings (selectors may need adjustment based on
                     # current CIAN layout)
-                    listing_elements = soup.find_all(
-                        "div", class_="listing-item"
-                    )
+                    listing_elements = soup.find_all("div", class_="listing-item")
 
                     if not listing_elements:
                         break
@@ -234,14 +224,10 @@ class CIANScraper:
         """
         try:
             listing = {
-                "title": element.find(
-                    "h2", class_="listing-title"
-                ).text.strip(),
+                "title": element.find("h2", class_="listing-title").text.strip(),
                 "price": CIANScraper.extract_price(element),
                 "area": CIANScraper.extract_area(element),
-                "address": element.find(
-                    "div", class_="listing-address"
-                ).text.strip(),
+                "address": element.find("div", class_="listing-address").text.strip(),
                 "rooms": CIANScraper.extract_rooms(element),
                 "url": element.find("a", class_="listing-link").get("href"),
                 "scraped_at": datetime.utcnow().isoformat(),
@@ -256,9 +242,7 @@ class CIANScraper:
         try:
             price_text = element.find("div", class_="listing-price").text
             # Remove currency symbols and spaces, convert to float
-            price_str = "".join(
-                c for c in price_text if c.isdigit() or c == "."
-            )
+            price_str = "".join(c for c in price_text if c.isdigit() or c == ".")
             return float(price_str)
         except (ValueError, AttributeError):
             return None
@@ -290,9 +274,7 @@ class GeocodingService:
     """Geocoding service for address to coordinate conversion."""
 
     @staticmethod
-    def geocode_address(
-        address: str, region: str = "Russia"
-    ) -> Optional[Dict]:
+    def geocode_address(address: str, region: str = "Russia") -> Optional[Dict]:
         """
         Convert address to coordinates using Nominatim.
 

@@ -55,9 +55,7 @@ class JSONFormatter(handlers.Formatter):
         return json.dumps(log_data)
 
 
-def _setup_console_handler(
-    root_logger: Logger, log_level: str
-) -> None:
+def _setup_console_handler(root_logger: Logger, log_level: str) -> None:
     """Setup console handler for logging.
 
     Args:
@@ -71,9 +69,7 @@ def _setup_console_handler(
     root_logger.addHandler(handler)
 
 
-def _create_rotating_handler(
-    log_path: str, level: int
-) -> handlers.RotatingFileHandler:
+def _create_rotating_handler(log_path: str, level: int) -> handlers.RotatingFileHandler:
     """Create a rotating file handler.
 
     Args:
@@ -83,9 +79,7 @@ def _create_rotating_handler(
     Returns:
         Configured rotating file handler
     """
-    handler = handlers.RotatingFileHandler(
-        log_path, maxBytes=10485760, backupCount=5
-    )
+    handler = handlers.RotatingFileHandler(log_path, maxBytes=10485760, backupCount=5)
     handler.setLevel(level)
     handler.setFormatter(JSONFormatter())
     return handler

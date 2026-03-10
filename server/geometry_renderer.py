@@ -53,9 +53,7 @@ class GeometryRenderer:
 
     def create_image(self) -> Image.Image:
         """Create blank image."""
-        return Image.new(
-            "RGB", (self.width, self.height), self.background_color
-        )
+        return Image.new("RGB", (self.width, self.height), self.background_color)
 
     def calculate_bounds(self, geometries: List[Dict]) -> Dict:
         """Calculate bounding box for all geometries."""
@@ -135,9 +133,7 @@ class GeometryRenderer:
                 return
 
             pixels = [self.project_coordinate(c[0], c[1]) for c in coords]
-            self.draw.line(
-                pixels, fill=self.stroke_color, width=self.stroke_width
-            )
+            self.draw.line(pixels, fill=self.stroke_color, width=self.stroke_width)
         except Exception as e:
             print(f"Error rendering linestring: {str(e)}")
 
@@ -154,9 +150,7 @@ class GeometryRenderer:
                 return
 
             pixels = [self.project_coordinate(c[0], c[1]) for c in exterior]
-            self.draw.polygon(
-                pixels, fill=self.fill_color, outline=self.stroke_color
-            )
+            self.draw.polygon(pixels, fill=self.fill_color, outline=self.stroke_color)
 
             # Interior rings (holes)
             for interior in coords_list[1:]:
@@ -183,9 +177,7 @@ class GeometryRenderer:
                 self.render_point({"type": "Point", "coordinates": coords})
         elif geom_type == "MultiLineString":
             for coords in geometry.get("coordinates", []):
-                self.render_linestring(
-                    {"type": "LineString", "coordinates": coords}
-                )
+                self.render_linestring({"type": "LineString", "coordinates": coords})
         elif geom_type == "MultiPolygon":
             for coords in geometry.get("coordinates", []):
                 self.render_polygon({"type": "Polygon", "coordinates": coords})
@@ -329,9 +321,9 @@ class RasterInterpolator:
         """
         try:
             # Normalize to 0-255
-            normalized = (
-                (grid - grid.min()) / (grid.max() - grid.min()) * 255
-            ).astype(np.uint8)
+            normalized = ((grid - grid.min()) / (grid.max() - grid.min()) * 255).astype(
+                np.uint8
+            )
 
             # Create image
             image = Image.fromarray(normalized, mode="L")

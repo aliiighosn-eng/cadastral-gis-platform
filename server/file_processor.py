@@ -83,9 +83,7 @@ class FileProcessor:
             feature = {
                 "id": idx,
                 "geometry": row.geometry.__geo_interface__,
-                "properties": {
-                    k: v for k, v in row.items() if k != "geometry"
-                },
+                "properties": {k: v for k, v in row.items() if k != "geometry"},
             }
             features.append(feature)
 

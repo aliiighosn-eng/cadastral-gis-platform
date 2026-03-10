@@ -124,9 +124,7 @@ class PricingFactorCalculator:
 
             for cell_data in density_cells:
                 cell_geom = shape(cell_data.get("geometry", {}))
-                density_value = cell_data.get("properties", {}).get(
-                    "density", 0
-                )
+                density_value = cell_data.get("properties", {}).get("density", 0)
 
                 # Calculate intersection
                 intersection = parcel.intersection(cell_geom)
@@ -194,8 +192,7 @@ class PricingFactorCalculator:
             return 0.0
 
         composite = (
-            sum(value * weights.get(name, 0) for name, value in factors) /
-            total_weight
+            sum(value * weights.get(name, 0) for name, value in factors) / total_weight
         )
 
         return round(composite, 4)
