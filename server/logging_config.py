@@ -11,8 +11,8 @@ from datetime import datetime
 from logging import (
     DEBUG,
     ERROR,
-    Formatter,
     INFO,
+    Formatter,
     Logger,
     StreamHandler,
     getLogger,
